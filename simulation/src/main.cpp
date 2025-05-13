@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 int ledPin = 13;               
 int inputPin = 2;              
 int pirState = LOW;             
@@ -11,6 +13,7 @@ void setup() {
 }
 
 void loop() {
+  Serial.println("Looping...");
   val = digitalRead(inputPin);  
   if (val == HIGH) {            
     digitalWrite(ledPin, HIGH);  
