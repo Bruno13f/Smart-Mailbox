@@ -1,25 +1,25 @@
 #include <Arduino.h>
-#include <MD_Parola.h>
-#include <MD_MAX72xx.h>
-
-#define HARDWARE_TYPE MD_MAX72XX::PAROLA_HW
-#define MAX_DEVICES 4
-#define CS_PIN 10
-MD_Parola myDisplay = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
+#include "HX711.h"
 
 const float BETA = 3950;
+const int LOADCELL_DOUT = 7;
+const int LOADCELL_SCK = 6;
+const float SCALE_FACTOR = 0.42;
+
 int led = 12;               
-int sensor = 2;       
+int sensor = 2;    
 int state = LOW;            
-int val = 0;            
+int val = 0;
+
+HX711 scale;
 
 void setup() {
   pinMode(led, OUTPUT);      
   pinMode(sensor, INPUT);    
-  Serial.begin(9600);        
-  myDisplay.begin();
-  myDisplay.setIntensity(0);
-  myDisplay.displayClear();
+  Serial.begin(9600);
+  scale.begin(LOADCELL_DOUT, LOADCELL_SCK);
+  scale.set_scale(SCALE_FACTOR);
+  scale.tare(); 
 }
 
 void loop(){
@@ -46,7 +46,14 @@ void loop(){
   int analogValue = analogRead(A0);
   float celsius = 1 / (log(1 / (1023. / analogValue - 1)) / BETA + 1.0 / 298.15) - 273.15;
   String temp = (String) celsius;
-  Serial.println(temp);
-  myDisplay.print(temp);
+  Serial.print("Temperature: ");
+  Serial.print(celsius);
+  Serial.println(" °C");
+
+  Serial.print("Weight: ");
+  Serial.print(scale.get_units(), 1);
+  Serial.println(" g");
+  
   delay(1000);
+  
 }
