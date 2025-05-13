@@ -1,37 +1,47 @@
 {
     "version": 1,
-    "author": "MSC",
+    "author": "ABHINESWARAN V",
     "editor": "wokwi",
     "parts": [
-      {
-        "type": "wokwi-arduino-uno",
-        "id": "uno",
-        "top": 98.67,
-        "left": -98.67,
-        "attrs": {}
-      },
+      { "type": "wokwi-arduino-uno", "id": "uno", "top": 0, "left": 0, "attrs": {} },
       {
         "type": "wokwi-pir-motion-sensor",
         "id": "pir1",
-        "top": -42,
-        "left": 25.81,
-        "attrs": {
-            "delayTime": "2"
-        }
+        "top": -120.8,
+        "left": 194.22,
+        "attrs": { "delayTime": "2" }
+      },
+      { "type": "wokwi-led", "id": "led1", "top": -99.6, "left": 90.2, "attrs": { "color": "red" } },
+      {
+        "type": "wokwi-ntc-temperature-sensor",
+        "id": "ntc1",
+        "top": 88.5,
+        "left": 450.7,
+        "rotate": 90,
+        "attrs": {}
       },
       {
-        "type": "wokwi-led",
-        "id": "led1",
-        "top": -9,
-        "left": -32.67,
-        "attrs": { "color": "red" }
+        "type": "wokwi-max7219-matrix",
+        "id": "matrix1",
+        "top": -57,
+        "left": 343.44,
+        "attrs": { "chain": "4" }
       }
     ],
     "connections": [
-      [ "pir1:VCC", "uno:5V", "red", [ "v19", "h-175", "v261", "h181" ] ],
-      [ "pir1:OUT", "uno:2", "green", [ "v37", "h68" ] ],
-      [ "uno:13", "led1:A", "green", [ "v-62", "h-47" ] ],
-      [ "uno:GND.1", "led1:C", "black", [ "v-54", "h-33" ] ],
-      [ "pir1:GND", "uno:GND.1", "black", [ "v31", "*", "v-28" ] ]
-    ]
+      [ "pir1:OUT", "uno:2", "green", [ "h1.58", "v40.08" ] ],
+      [ "led1:C", "uno:GND.1", "black", [ "v0" ] ],
+      [ "ntc1:OUT", "uno:A0", "green", [ "v9.6", "h0.1", "v28.8", "h-307.2", "v-38.9" ] ],
+      [ "pir1:VCC", "uno:5V", "red", [ "v19.2", "h57.6", "v220.8", "h-124.8" ] ],
+      [ "pir1:GND", "uno:GND.3", "black", [ "v9.6", "h57.34", "v240", "h-124.8" ] ],
+      [ "led1:A", "uno:12", "green", [ "v48", "h19.2" ] ],
+      [ "ntc1:GND", "uno:GND.3", "black", [ "v28.8", "h-349" ] ],
+      [ "ntc1:VCC", "uno:5V", "red", [ "v19.2", "h-358.4" ] ],
+      [ "matrix1:V+", "uno:5V", "red", [ "h9.6", "v76.8", "h-403.2", "v172.8", "h-124.8" ] ],
+      [ "matrix1:GND", "uno:GND.3", "black", [ "h19.2", "v76.8", "h-393.6", "v172.8", "h-124.8" ] ],
+      [ "matrix1:DIN", "uno:11", "green", [ "h28.8", "v-124.8", "h-566.4", "v19.2" ] ],
+      [ "matrix1:CS", "uno:10", "green", [ "h28.8", "v-134.4", "h-566.4" ] ],
+      [ "matrix1:CLK", "uno:13", "green", [ "h28.8", "v-144", "h-576", "v134.4" ] ]
+    ],
+    "dependencies": {}
   }
