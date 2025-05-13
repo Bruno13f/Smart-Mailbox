@@ -1,35 +1,45 @@
 #include <Arduino.h>
+#include <MD_Parola.h>
+#include <MD_MAX72xx.h>
+
+#define HARDWARE_TYPE MD_MAX72XX::PAROLA_HW
+#define MAX_DEVICES 4
+#define CS_PIN 10
+MD_Parola myDisplay = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 
 const float BETA = 3950;
-int led = 12;                // the pin that the LED is atteched to
-int sensor = 2;              // the pin that the sensor is atteched to
-int state = LOW;             // by default, no motion detected
-int val = 0;                 // variable to store the sensor status (value)
+int led = 12;               
+int sensor = 2;       
+int state = LOW;            
+int val = 0;            
 
 void setup() {
-  pinMode(led, OUTPUT);      // initalize LED as an output
-  pinMode(sensor, INPUT);    // initialize sensor as an input
-  Serial.begin(9600);        // initialize serial
+  pinMode(led, OUTPUT);      
+  pinMode(sensor, INPUT);    
+  Serial.begin(9600);        
+  myDisplay.begin();
+  myDisplay.setIntensity(0);
+  myDisplay.displayClear();
 }
 
 void loop(){
-  val = digitalRead(sensor);   // read sensor value
-  if (val == HIGH) {           // check if the sensor is HIGH
-    digitalWrite(led, HIGH);   // turn LED ON
-    delay(100);                // delay 100 milliseconds 
+  val = digitalRead(sensor);   
+  if (val == HIGH) {           
+    digitalWrite(led, HIGH);   
+    delay(100);                
     
     if (state == LOW) {
       Serial.println("Motion detected! Counting 2 seconds..."); 
-      state = HIGH;       // update variable state to HIGH
+      state = HIGH;      
     }
   } 
   else {
-      digitalWrite(led, LOW); // turn LED OFF
-      delay(200);             // delay 200 milliseconds 
+      digitalWrite(led, LOW); 
+      delay(200);             
       
       if (state == HIGH){
         Serial.println("Motion stopped!");
-        state = LOW;       // update variable state to LOW
+        state = LOW;    
     }
   }
 
@@ -37,5 +47,6 @@ void loop(){
   float celsius = 1 / (log(1 / (1023. / analogValue - 1)) / BETA + 1.0 / 298.15) - 273.15;
   String temp = (String) celsius;
   Serial.println(temp);
+  myDisplay.print(temp);
   delay(1000);
 }
