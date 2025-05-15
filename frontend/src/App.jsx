@@ -5,6 +5,7 @@ import {
   RoundedBox,
   Text,
   useCursor,
+  Environment,
 } from "@react-three/drei";
 import * as THREE from "three";
 
@@ -210,6 +211,7 @@ export default function App() {
           intensity={1}
           castShadow
         />
+        <Environment preset="apartment" background /> {/* <-- Add this line */}
         <Suspense fallback={null}>
           <PortugueseMailbox flapOpen={flapOpen} setFlapOpen={setFlapOpen} />
           <MailLetter
