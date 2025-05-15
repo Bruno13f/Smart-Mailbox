@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bun-backend
+    ports:
+      - "3000:3000"
+    working_dir: /app
+    volumes:
+      - ./backend/src:/app/src
+    command: bun src/index.ts
