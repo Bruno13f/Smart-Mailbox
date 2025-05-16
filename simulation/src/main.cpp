@@ -1,5 +1,6 @@
 #include <Arduino.h>
-#include <WiFi.h>
+#include<WiFi.h>
+#include <HTTPClient.h>
 #include "HX711.h"
 
 const float BETA = 3950;
@@ -17,6 +18,25 @@ float lastTemperature = -1000.0;
 
 HX711 scale;
 
+int sendNewMail() {
+  Serial.println("Sending new mail...");
+  HTTPClient http;
+  http.begin("http://backend-winter-hill-842.fly.dev/cartas");
+  http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+  int httpRespondCode = http.POST("dummy=1");
+
+  Serial.println(httpRespondCode);
+  http.end();
+
+  if (httpRespondCode > 0) {
+    return 1;
+  } else {
+    return 0;
+  }
+
+}
+
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Hello, ESP32!");
@@ -31,7 +51,7 @@ void setup() {
     delay(100);
     Serial.print(".");
   }
-  Serial.println(" Connected!");
+  Serial.println("Connected!");
 }
 
 void loop() {
@@ -44,6 +64,13 @@ void loop() {
       Serial.println("Motion detected! Counting 2 seconds..."); 
       state = HIGH;      
     }
+    
+    if (sendNewMail() == 0){
+      Serial.println("Error sending mail");
+    } else {
+      Serial.println("Mail sent successfully");
+    }
+
   } 
   else {
       digitalWrite(LED, LOW); 
