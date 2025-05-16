@@ -12,3 +12,15 @@ services:
     volumes:
       - ./backend/src:/app/src
     command: bun src/index.ts
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vite-frontend
+    ports:
+      - "5173:80"
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - backend
