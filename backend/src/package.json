@@ -11,5 +11,9 @@
   },
   "scripts": {
     "start": "bun index.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "mongodb": "^6.16.0"
   }
 }
