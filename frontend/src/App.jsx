@@ -14,6 +14,7 @@ export default function App() {
   const [flapOpen, setFlapOpen] = useState(false);
   const [letterCount, setLetterCount] = useState(0);
   const [temperature, setTemperature] = useState(0);
+  const [ledBlink, setLedBlink] = useState(false);
 
   // Track a list of letters, each with a unique id and animation state
   const [letters, setLetters] = useState([{ id: 0, animating: false }]);
@@ -88,6 +89,8 @@ export default function App() {
           console.log("Temperature:", temperature);
           if (!isNaN(temperature)) {
             setTemperature(temperature);
+            setLedBlink(true);
+            setTimeout(() => setLedBlink(false), 600); // Blink for 600ms
           }
         }
       } catch (error) {
@@ -153,7 +156,7 @@ export default function App() {
         <Environment preset="apartment" background />
         <Suspense fallback={null}>
           <PortugueseMailbox flapOpen={flapOpen} setFlapOpen={setFlapOpen} />
-          <LedLightSensor position={[0.7, 0.7, 0.0]} />
+          <LedLightSensor position={[0.7, 0.7, 0.0]} blink={ledBlink} />
           {letters.map((letter) => (
             <MailLetter
               key={letter.id}

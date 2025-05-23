@@ -1,13 +1,33 @@
-import React from "react";
+import React, { useRef, useEffect, useState } from "react";
 
 /**
  * A simple 3D model of a typical LED light sensor (green LED with legs).
- * Position is relative to the mailbox scene.
+ * Blinks when the `blink` prop is true.
  */
-export default function LedLightSensor(props) {
-  // Optionally, you can use useThree for scene context if needed
+export default function LedLightSensor({
+  position = [0, 0, 0],
+  blink = false,
+}) {
+  const [isOn, setIsOn] = useState(false);
+  const blinkInterval = useRef();
+
+  useEffect(() => {
+    if (blink) {
+      // Blink very fast (e.g., 10 times per second)
+      blinkInterval.current = setInterval(() => {
+        setIsOn((on) => !on);
+      }, 50);
+    } else {
+      setIsOn(false);
+      if (blinkInterval.current) clearInterval(blinkInterval.current);
+    }
+    return () => {
+      if (blinkInterval.current) clearInterval(blinkInterval.current);
+    };
+  }, [blink]);
+
   return (
-    <group {...props}>
+    <group position={position}>
       {/* LED body */}
       <mesh position={[0, 0, 0]}>
         <cylinderGeometry args={[0.03, 0.03, 0.08, 32]} />
@@ -18,8 +38,8 @@ export default function LedLightSensor(props) {
         <sphereGeometry args={[0.03, 16, 16]} />
         <meshStandardMaterial
           color="#00ff00"
-          emissive="#00ff00"
-          emissiveIntensity={0.7}
+          emissive={isOn ? "#00ff00" : "#003300"}
+          emissiveIntensity={isOn ? 1.5 : 0.2}
           transparent
           opacity={0.7}
         />
