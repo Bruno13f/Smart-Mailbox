@@ -40,14 +40,10 @@ function PortugueseMailbox({ flapOpen, setFlapOpen }) {
           roughness={0.2}
         />
       </RoundedBox>
-      <group
-        ref={flapRef}
-        position={[0, 0.325, 0.26]}
-      >
+      <group ref={flapRef} position={[0, 0.325, 0.26]}>
         <mesh
           position={[0, 0.025, 0]}
-          onClick={() => setFlapOpen((open) => !open)}
-        >
+          onClick={() => setFlapOpen((open) => !open)}>
           <boxGeometry args={[0.5, 0.05, 0.02]} />
           <meshStandardMaterial color="#bbb" metalness={0.3} roughness={0.3} />
         </mesh>
@@ -77,6 +73,14 @@ function MailLetter({ animationStep, onFallEnd, initialPos, initialRot }) {
   const ref = useRef();
   const [localPos, setLocalPos] = useState(initialPos);
   const [localRot, setLocalRot] = useState(initialRot);
+
+  // Add a useEffect to reset the letter position when animation completes
+  useEffect(() => {
+    if (animationStep === 0) {
+      setLocalPos(initialPos);
+      setLocalRot(initialRot);
+    }
+  }, [animationStep, initialPos, initialRot]);
 
   useFrame(() => {
     // Step 1: Move to slot and open flap in parallel
@@ -155,17 +159,23 @@ export default function App() {
   const [animationStep, setAnimationStep] = useState(0); // 0: idle, 1: move to slot+open flap, 2: fall, 3: close flap
   const [flapOpen, setFlapOpen] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
+  const [letterCount, setLetterCount] = useState(0);
 
+  // Animation sequence
   // Animation sequence
   useEffect(() => {
     if (animationStep === 1) {
+      setButtonDisabled(false);
       setFlapOpen(true); // Open flap as letter moves
     }
     if (animationStep === 2) {
       setTimeout(() => setFlapOpen(false), 400); // Close flap after short delay
     }
     if (animationStep === 3) {
-      setButtonDisabled(true);
+      // Reset animation after a delay so the user can see the completed animation
+      setAnimationStep(0);
+      setButtonDisabled(false);
+      setLetterCount((prevCount) => prevCount + 1); // Increment letter count
     }
   }, [animationStep]);
 
@@ -180,6 +190,23 @@ export default function App() {
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+      {/* Letter count display */}
+      <div
+        style={{
+          position: "absolute",
+          top: 20,
+          right: 20,
+          zIndex: 10,
+          background: "rgba(255,255,255,0.85)",
+          borderRadius: 8,
+          padding: "10px 18px",
+          fontSize: "1.2em",
+          fontWeight: 600,
+          color: "#333",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.07)",
+        }}>
+        Letters mailed: {letterCount}
+      </div>
       <button
         style={{
           position: "absolute",
@@ -191,10 +218,8 @@ export default function App() {
         }}
         onClick={() => {
           setAnimationStep(1);
-          setButtonDisabled(false);
         }}
-        disabled={buttonDisabled || animationStep !== 0}
-      >
+        disabled={buttonDisabled || animationStep !== 0}>
         Mail Letter
       </button>
       <Canvas
