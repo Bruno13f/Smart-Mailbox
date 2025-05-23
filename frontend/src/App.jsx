@@ -9,33 +9,41 @@ import MailButton from "./components/MailButton";
 export default function App() {
   const initialLetterPos = [0.6, 0.1, 0.25];
   const initialLetterRot = [0, 0, 0];
-  const [animationStep, setAnimationStep] = useState(0); // 0: idle, 1: move to slot+open flap, 2: fall, 3: close flap
   const [flapOpen, setFlapOpen] = useState(false);
   const [letterCount, setLetterCount] = useState(0);
 
-  useEffect(() => {
-    if (animationStep === 1) {
-      setFlapOpen(true);
-    }
-    if (animationStep === 2) {
-      setTimeout(() => setFlapOpen(false), 400);
-    }
-    if (animationStep === 3) {
-      setAnimationStep(0);
-      setLetterCount((prevCount) => prevCount + 1);
-    }
-  }, [animationStep]);
+  // Track a list of letters, each with a unique id and animation state
+  const [letters, setLetters] = useState([{ id: 0, animating: false }]);
+  const [nextId, setNextId] = useState(1);
 
-  const handleLetterAtSlot = () => {
-    if (animationStep === 1) {
-      setAnimationStep(2);
-    } else if (animationStep === 2) {
-      setAnimationStep(3);
-    }
+  // Compute if any letter is animating
+  const anyAnimating = letters.some((l) => l.animating);
+
+  // Flap should be open if any letter is animating, closed otherwise
+  useEffect(() => {
+    setFlapOpen(anyAnimating);
+  }, [anyAnimating]);
+
+  // When the button is clicked, start animating the first idle letter and add a new one
+  const handleMailButtonClick = () => {
+    setLetters((prev) => {
+      // Find the first idle letter
+      const idx = prev.findIndex((l) => !l.animating);
+      if (idx === -1) return prev; // Shouldn't happen
+      // Start animating it
+      const updated = prev.map((l, i) =>
+        i === idx ? { ...l, animating: true } : l
+      );
+      // Add a new idle letter
+      return [...updated, { id: nextId, animating: false }];
+    });
+    setNextId((id) => id + 1);
   };
 
-  const handleMailButtonClick = () => {
-    setAnimationStep(1);
+  // When a letter finishes animating, remove it and increment the count
+  const handleLetterAtSlot = (id) => {
+    setLetters((prev) => prev.filter((l) => l.id !== id));
+    setLetterCount((prevCount) => prevCount + 1);
   };
 
   return (
@@ -59,12 +67,15 @@ export default function App() {
         <Environment preset="apartment" background />
         <Suspense fallback={null}>
           <PortugueseMailbox flapOpen={flapOpen} setFlapOpen={setFlapOpen} />
-          <MailLetter
-            animationStep={animationStep}
-            onFallEnd={handleLetterAtSlot}
-            initialPos={initialLetterPos}
-            initialRot={initialLetterRot}
-          />
+          {letters.map((letter) => (
+            <MailLetter
+              key={letter.id}
+              animationStep={letter.animating ? 1 : 0}
+              onFallEnd={() => handleLetterAtSlot(letter.id)}
+              initialPos={initialLetterPos}
+              initialRot={initialLetterRot}
+            />
+          ))}
           <mesh
             rotation={[-Math.PI / 2, 0, 0]}
             position={[0, -0.75, 0]}
