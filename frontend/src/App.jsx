@@ -1,4 +1,4 @@
-import React, { Suspense, useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect, useCallback } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Environment } from "@react-three/drei";
 import PortugueseMailbox from "./components/PortugueseMailbox";
@@ -25,7 +25,7 @@ export default function App() {
   }, [anyAnimating]);
 
   // When the button is clicked, start animating the first idle letter and add a new one
-  const handleMailButtonClick = () => {
+  const handleMailButtonClick = useCallback(() => {
     setLetters((prev) => {
       // Find the first idle letter
       const idx = prev.findIndex((l) => !l.animating);
@@ -38,13 +38,33 @@ export default function App() {
       return [...updated, { id: nextId, animating: false }];
     });
     setNextId((id) => id + 1);
-  };
+  }, [nextId]);
 
   // When a letter finishes animating, remove it and increment the count
   const handleLetterAtSlot = (id) => {
     setLetters((prev) => prev.filter((l) => l.id !== id));
     setLetterCount((prevCount) => prevCount + 1);
   };
+
+  useEffect(() => {
+    const ws = new WebSocket("ws://localhost:3000/ws");
+    ws.onopen = () => {
+      console.log("WebSocket connected");
+    };
+    ws.onmessage = (event) => {
+      console.log("WebSocket message received:", event.data);
+      if (
+        typeof event.data === "string" &&
+        event.data.includes("Nova carta recebida!")
+      ) {
+        handleMailButtonClick();
+      }
+    };
+    ws.onclose = () => {
+      console.log("WebSocket disconnected");
+    };
+    return () => ws.close();
+  }, [handleMailButtonClick]);
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>

@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   backend:
@@ -24,13 +24,3 @@ services:
       - ./frontend:/app
     depends_on:
       - backend
-
-  websocket:
-    build:
-      context: ./sockets
-      dockerfile: Dockerfile
-    container_name: websocket-server
-    ports:
-      - "8080:8080"
-    working_dir: /app
-    command: node server.js
