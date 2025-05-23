@@ -1,0 +1,17 @@
+meta {
+  name: Cartas MSC
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:3000/mail
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "mail": true
+  }
+}

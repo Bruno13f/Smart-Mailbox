@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "smart-mailbox",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

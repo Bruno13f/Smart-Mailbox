@@ -46,6 +46,7 @@ export default function App() {
     setLetterCount((prevCount) => prevCount + 1);
   };
 
+  // Only create the WebSocket once on mount
   useEffect(() => {
     const ws = new WebSocket("ws://localhost:3000/ws");
     ws.onopen = () => {
@@ -57,14 +58,43 @@ export default function App() {
         typeof event.data === "string" &&
         event.data.includes("Nova carta recebida!")
       ) {
-        handleMailButtonClick();
+        // Use functional update to always get latest nextId
+        setLetters((prev) => {
+          const idx = prev.findIndex((l) => !l.animating);
+          if (idx === -1) return prev;
+          const updated = prev.map((l, i) =>
+            i === idx ? { ...l, animating: true } : l
+          );
+          return [
+            ...updated,
+            {
+              id: prev.length ? prev[prev.length - 1].id + 1 : 1,
+              animating: false,
+            },
+          ];
+        });
+        setNextId((id) => id + 1);
       }
     };
     ws.onclose = () => {
       console.log("WebSocket disconnected");
     };
     return () => ws.close();
-  }, [handleMailButtonClick]);
+  }, []); // Only run once on mount
+
+  // Fetch initial letter count on mount
+  useEffect(() => {
+    fetch("http://localhost:3000/mail")
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.count === "number") {
+          setLetterCount(data.count);
+        }
+      })
+      .catch((err) =>
+        console.error("Failed to fetch initial letter count", err)
+      );
+  }, []);
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
