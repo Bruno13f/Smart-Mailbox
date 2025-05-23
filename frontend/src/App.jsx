@@ -5,12 +5,14 @@ import PortugueseMailbox from "./components/PortugueseMailbox";
 import MailLetter from "./components/MailLetter";
 import LetterCountDisplay from "./components/LetterCountDisplay";
 import MailButton from "./components/MailButton";
+import TemperatureDisplay from "./components/TemperatureDisplay";
 
 export default function App() {
   const initialLetterPos = [0.6, 0.1, 0.25];
   const initialLetterRot = [0, 0, 0];
   const [flapOpen, setFlapOpen] = useState(false);
   const [letterCount, setLetterCount] = useState(0);
+  const [temperature, setTemperature] = useState(0);
 
   // Track a list of letters, each with a unique id and animation state
   const [letters, setLetters] = useState([{ id: 0, animating: false }]);
@@ -54,26 +56,37 @@ export default function App() {
     };
     ws.onmessage = (event) => {
       console.log("WebSocket message received:", event.data);
-      if (
-        typeof event.data === "string" &&
-        event.data.includes("Nova carta recebida!")
-      ) {
-        // Use functional update to always get latest nextId
-        setLetters((prev) => {
-          const idx = prev.findIndex((l) => !l.animating);
-          if (idx === -1) return prev;
-          const updated = prev.map((l, i) =>
-            i === idx ? { ...l, animating: true } : l
-          );
-          return [
-            ...updated,
-            {
-              id: prev.length ? prev[prev.length - 1].id + 1 : 1,
-              animating: false,
-            },
-          ];
-        });
-        setNextId((id) => id + 1);
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.message === "new-mail") {
+          // Use functional update to always get latest nextId
+          setLetters((prev) => {
+            const idx = prev.findIndex((l) => !l.animating);
+            if (idx === -1) return prev;
+            const updated = prev.map((l, i) =>
+              i === idx ? { ...l, animating: true } : l
+            );
+            return [
+              ...updated,
+              {
+                id: prev.length ? prev[prev.length - 1].id + 1 : 1,
+                animating: false,
+              },
+            ];
+          });
+          setNextId((id) => id + 1);
+        }
+        
+        if (data.message === "new-temperature" && data.data && data.data.temperature) {
+          const temperature = parseFloat(data.data.temperature);
+          console.log("Temperature:", temperature);
+          if (!isNaN(temperature)) {
+            setTemperature(temperature);
+          }
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
       }
     };
     ws.onclose = () => {
@@ -96,9 +109,27 @@ export default function App() {
       );
   }, []);
 
+  useEffect(() => {
+    const fetchTemperature = async () => {
+      try {
+        const response = await fetch("http://localhost:3000/temperature");
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        const data = await response.json();
+        setTemperature(data.temperature || 0);
+      } catch (error) {
+        console.error("Error fetching temperature:", error);
+      }
+    };
+
+    fetchTemperature();
+  }, []);
+
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
       <LetterCountDisplay count={letterCount} />
+      <TemperatureDisplay temperature={temperature} />
       <MailButton onClick={handleMailButtonClick} />
       <Canvas
         shadows

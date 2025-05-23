@@ -1,6 +1,6 @@
 import { connectToDB } from "./mongo";
 import { config } from "dotenv";
-import { getLastMailCount, parseJSONBody } from "./utils";
+import { getLastMailCount, getLastTemperature, parseJSONBody } from "./utils";
 import { addClient, removeClient, notifyAllClients } from "./ws-clients";
 config();
 
@@ -50,6 +50,15 @@ async function handleRestRequest(req: Request): Promise<Response> {
     }
   }
 
+  if (method === "GET" && pathname === "/temperature") {
+    try {
+      const temperature = await getLastTemperature(db);
+      return json({ temperature });
+    } catch {
+      return json({ error: "Failed to fetch temperature data" }, 500);
+    }
+  }
+
   if (method === "POST" && pathname === "/mail") {
     try {
       const body = await parseJSONBody(req);
@@ -60,7 +69,9 @@ async function handleRestRequest(req: Request): Promise<Response> {
         count: newCount,
         timestamp: new Date(),
       });
-      notifyAllClients("Nova carta recebida!");
+
+      notifyAllClients("new-mail", { count: newCount });
+
       return json({ message: "Mail event logged", count: newCount }, 201);
     } catch (err: any) {
       return json(
@@ -75,9 +86,13 @@ async function handleRestRequest(req: Request): Promise<Response> {
       const body = await parseJSONBody(req);
       if (typeof body.temperature !== "number")
         throw new Error("Invalid temperature");
+
       await db
         .collection("temperatures")
         .insertOne({ temperature: body.temperature, timestamp: new Date() });
+
+      notifyAllClients("new-temperature", { temperature: body.temperature });
+
       return json({ message: "Temperature saved" }, 201);
     } catch (err: any) {
       return json(
