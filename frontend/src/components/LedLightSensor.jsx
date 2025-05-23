@@ -13,14 +13,16 @@ export default function LedLightSensor({
 
   useEffect(() => {
     if (blink) {
-      // Blink very fast (e.g., 10 times per second)
+      // the interval sets how fast the LED blinks
       blinkInterval.current = setInterval(() => {
         setIsOn((on) => !on);
-      }, 50);
-    } else {
-      setIsOn(false);
-      if (blinkInterval.current) clearInterval(blinkInterval.current);
+      }, 100);
+      return;
     }
+
+    setIsOn(false);
+    if (blinkInterval.current) clearInterval(blinkInterval.current);
+
     return () => {
       if (blinkInterval.current) clearInterval(blinkInterval.current);
     };

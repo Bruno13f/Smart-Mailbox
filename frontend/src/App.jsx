@@ -90,7 +90,7 @@ export default function App() {
           if (!isNaN(temperature)) {
             setTemperature(temperature);
             setLedBlink(true);
-            setTimeout(() => setLedBlink(false), 600); // Blink for 600ms
+            setTimeout(() => setLedBlink(false), 200); // Blink
           }
         }
       } catch (error) {
