@@ -6,6 +6,7 @@ import MailLetter from "./components/MailLetter";
 import LetterCountDisplay from "./components/LetterCountDisplay";
 import MailButton from "./components/MailButton";
 import TemperatureDisplay from "./components/TemperatureDisplay";
+import LedLightSensor from "./components/LedLightSensor";
 
 export default function App() {
   const initialLetterPos = [0.6, 0.1, 0.25];
@@ -58,7 +59,7 @@ export default function App() {
       console.log("WebSocket message received:", event.data);
       try {
         const data = JSON.parse(event.data);
-        
+
         if (data.message === "new-mail") {
           // Use functional update to always get latest nextId
           setLetters((prev) => {
@@ -77,8 +78,12 @@ export default function App() {
           });
           setNextId((id) => id + 1);
         }
-        
-        if (data.message === "new-temperature" && data.data && data.data.temperature) {
+
+        if (
+          data.message === "new-temperature" &&
+          data.data &&
+          data.data.temperature
+        ) {
           const temperature = parseFloat(data.data.temperature);
           console.log("Temperature:", temperature);
           if (!isNaN(temperature)) {
@@ -148,6 +153,7 @@ export default function App() {
         <Environment preset="apartment" background />
         <Suspense fallback={null}>
           <PortugueseMailbox flapOpen={flapOpen} setFlapOpen={setFlapOpen} />
+          <LedLightSensor position={[0.7, 0.7, 0.0]} />
           {letters.map((letter) => (
             <MailLetter
               key={letter.id}
