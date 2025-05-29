@@ -6,6 +6,7 @@ WORKDIR /app
 
 # Copia os ficheiros do diretório local src/ para o container
 COPY src/ ./src/
+COPY .env .env
 
 # Copia os ficheiros de configuração necessários para o root do container
 COPY src/package.json src/bun.lock src/tsconfig.json ./
