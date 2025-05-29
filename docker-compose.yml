@@ -24,3 +24,10 @@ services:
       - ./frontend:/app
     depends_on:
       - backend
+
+  acme-cse:
+    image: ankraft/acme-onem2m-cse
+    container_name: acme-onem2m-cse
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
