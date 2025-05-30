@@ -7,7 +7,13 @@ config();
 
 let db: Awaited<ReturnType<typeof connectToDB>>;
 await (async () => {
-  db = await connectToDB();
+  // even if no connection to db is made (we are at school, port is disabled),
+  // we can still run the api to serve the acme requests to onem2m
+  try {
+    db = await connectToDB();
+  } catch (error) {
+    console.log("Erro ao conectar ao MongoDB");
+  }
 })();
 
 const websocketHandlers = {
@@ -65,10 +71,7 @@ async function handleRestRequest(req: Request): Promise<Response> {
       return json({ message: "OneM2M setup completed" + response }, 201);
     } catch (err: any) {
       console.error("Error in /setupOneM2M:", err);
-      return json(
-        { error: err.message || "Failed to setup OneM2M" },
-        500
-      );
+      return json({ error: err.message || "Failed to setup OneM2M" }, 500);
     }
   }
 
