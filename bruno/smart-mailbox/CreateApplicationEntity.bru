@@ -1,0 +1,36 @@
+meta {
+  name: CreateApplicationEntity
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://192.168.102.92:8080/cse-in
+  body: json
+  auth: inherit
+}
+
+headers {
+  X-M2M-RI: my_unique_request_id_ae_003
+  X-M2M-RVI: 3
+  Content-Type: application/json;ty=2
+  Accept: application/json
+}
+
+body:json {
+  {
+    "m2m:ae": {
+      "rn": "TempSensor",
+      "api": "N.com.example.uniqueApp",
+      "rr": true,
+      "lbl": [
+        "newAE",
+        "example"
+      ],
+      "srv": [
+        "2a",
+        "3"
+      ]
+    }
+  }
+}
