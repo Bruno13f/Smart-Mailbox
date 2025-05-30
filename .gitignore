@@ -4,3 +4,7 @@ simulation/.vscode/settings.json
 frontend/node_modules
 
 */node_modules
+
+acme-env
+acme.ini
+data

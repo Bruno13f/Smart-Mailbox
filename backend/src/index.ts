@@ -1,6 +1,6 @@
 import { connectToDB } from "./mongo";
 import { config } from "dotenv";
-import { createACP, createAE, createContainer } from "./acmeClient";
+import { createACP, createAE, createContainer,  createContentInstance} from "./acmeClient";
 import { getLastMailCount, getLastTemperature, parseJSONBody } from "./utils";
 import { addClient, removeClient, notifyAllClients } from "./ws-clients";
 config();
@@ -58,6 +58,10 @@ async function handleRestRequest(req: Request): Promise<Response> {
       response += await createAE();
       response += await createContainer("mailbox");
       response += await createContainer("temperatures");
+
+      response += await createContentInstance("mailbox", "Novo pacote entregue às 11:00");
+      // response += await createContentInstance("temperatures", "21.3°C");
+
       return json({ message: "OneM2M setup completed" + response }, 201);
     } catch (err: any) {
       console.error("Error in /setupOneM2M:", err);
@@ -139,6 +143,7 @@ function json(obj: any, status = 200) {
 const port = Number(process.env.PORT) || 3000;
 Bun.serve({
   port,
+  idleTimeout: 255,
   fetch(req, server) {
     if (new URL(req.url).pathname === "/ws" && server.upgrade) {
       server.upgrade(req);

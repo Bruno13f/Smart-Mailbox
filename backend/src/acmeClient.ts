@@ -167,6 +167,40 @@ export async function createContainer(cntName: string) {
     }
 }
 
+export async function createContentInstance(containerName: string, content: string) {
+    const req_id = `reqContent_${Math.floor(100 + Math.random() * 900)}`;
+    const resourceType = 4; // ty=4 = ContentInstance
+    const headers = generateHeader(ae_name, req_id, resourceType);
+  
+    const body = {
+      "m2m:cin": {
+        "con": content,       // conteúdo principal
+        "cnf": "text/plain:0" // tipo MIME
+      }
+    };
+  
+    try {
+      const response = await fetch(`${acme_url}/~/${cse_id}/${cse_name}/${ae_name}/${containerName}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body)
+      });
+  
+      if (response.ok) {
+        return `\nContentInstance created in '${containerName}' with content: ${content}`;
+      } else {
+        const resText = await response.text();
+        console.error("Error creating ContentInstance:", resText);
+        throw new Error(`Failed to create ContentInstance: ${resText}`);
+      }
+  
+    } catch (error) {
+      console.error("Network or other error:", error);
+      throw error;
+    }
+  }
+  
+
 export async function checkAEExists(): Promise<boolean> {
     const req_id = `reqSmartMailbox_${Math.floor(100 + Math.random() * 900)}`;
     const header = generateHeader(originator!, req_id, 0); // Operation 0 = RETRIEVE
