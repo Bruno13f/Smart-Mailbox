@@ -1,5 +1,6 @@
 import { connectToDB } from "./mongo";
 import { config } from "dotenv";
+import { createACP } from "./acmeClient";
 import { getLastMailCount, getLastTemperature, parseJSONBody } from "./utils";
 import { addClient, removeClient, notifyAllClients } from "./ws-clients";
 config();
@@ -47,6 +48,19 @@ async function handleRestRequest(req: Request): Promise<Response> {
       return json({ count });
     } catch {
       return json({ error: "Failed to fetch mail data" }, 500);
+    }
+  }
+
+  if (method === "POST" && pathname === "/setupOneM2M") {
+    let response = "";
+    try {
+      response += await createACP();
+      return json({ message: "OneM2M setup completed" + response }, 201);
+    } catch (err: any) {
+      return json(
+        { error: err.message || "Failed to setup OneM2M" },
+        500
+      );
     }
   }
 
