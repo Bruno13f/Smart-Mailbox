@@ -1,6 +1,6 @@
 import { connectToDB } from "./mongo";
 import { config } from "dotenv";
-import { createACP } from "./acmeClient";
+import { createACP, createAE } from "./acmeClient";
 import { getLastMailCount, getLastTemperature, parseJSONBody } from "./utils";
 import { addClient, removeClient, notifyAllClients } from "./ws-clients";
 config();
@@ -55,6 +55,7 @@ async function handleRestRequest(req: Request): Promise<Response> {
     let response = "";
     try {
       response += await createACP();
+      response += await createAE();
       return json({ message: "OneM2M setup completed" + response }, 201);
     } catch (err: any) {
       return json(

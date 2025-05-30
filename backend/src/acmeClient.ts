@@ -1,5 +1,6 @@
 import { config } from "dotenv";
 import { createACPBody } from "./requests/createACP";
+import { createAEBody } from "./requests/createAE";
 import { generateHeader } from "./requests/header";
 
 config();
@@ -25,9 +26,11 @@ if (!acme_url || !cse_id || !cse_name || !originator) {
 
 const acp_name = "acpSmartMailbox";
 const ae_name = "CSmartMailbox";
-const req_id = `reqSmartMailbox_${Math.floor(100 + Math.random() * 900)}`;
+
 
 export async function createACP() {
+
+    const req_id = `reqSmartMailbox_${Math.floor(100 + Math.random() * 900)}`;
     const requestBody = createACPBody(acp_name, ae_name, ALL); 
     const header = generateHeader(originator!, req_id, CREATE_ACP);
 
@@ -38,9 +41,11 @@ export async function createACP() {
             body: JSON.stringify(requestBody)
         });
 
+        console.log(response.status)
+
         if (response.ok) {
-            return "\nACP Created successfully";
-        } else if (response.status === 409) {
+            return "\nACP created successfully";
+        } else if (response.status == 409) {
             return "\nACP already exists";
         } else {
             const resText = await response.text();
@@ -52,3 +57,75 @@ export async function createACP() {
         throw error;
     }
 }
+    
+
+export async function createAE() {
+
+    const acp_ri = await getACPDetails();
+    const req_id = `reqSmartMailbox_${Math.floor(100 + Math.random() * 900)}`;
+    const requestBody = createAEBody(acp_ri, ae_name, acme_url+"/"); 
+    const header = generateHeader(ae_name, req_id, CREATE_AE);
+
+    try {
+        const response = await fetch(`${acme_url}/~/${cse_id}/${cse_name}`, {
+            method: "POST",
+            headers: header,
+            body: JSON.stringify(requestBody)
+        });
+
+        if (response.ok) {
+            return "\nAE Created successfully";
+        }
+        else if (response.status === 404) {
+            return "\nACP not found - The specified ACP does not exist";
+        } else {
+            const resText = await response.text();
+        
+            if (resText.includes("Originator has already registered")) {
+                return "AE already registered, skipping creation.";
+            }
+        
+            console.error("Error creating AE:", resText);
+            throw new Error(`Error creating AE: ${resText}`);
+        }
+        
+    } catch (error) {
+        console.error("Network or other error:", error);
+        throw error;
+    }
+}
+
+export async function getACPDetails() {
+    const req_id = `reqSmartMailbox_${Math.floor(100 + Math.random() * 900)}`;
+    const header = generateHeader(originator!, req_id, CREATE_ACP);
+
+    try {
+        const response = await fetch(`${acme_url}/~/${cse_id}/${cse_name}/${acp_name}`, {
+            method: "GET",
+            headers: header,
+        });
+
+        if (response.ok) {
+            const data = await response.json() as { [key: string]: any };
+            if (data["m2m:acp"]) {
+                const acpRI = data["m2m:acp"].ri;
+                return acpRI;
+            } else {
+                throw new Error("Unexpected response structure. 'm2m:acp' not found.");
+            }
+        } else {
+            const errorData = await response.json() as { [key: string]: any};
+            if (errorData["m2m:dbg"]) {
+                const errorMessage = errorData["m2m:dbg"];
+                throw new Error(errorMessage);
+            } else {
+                throw new Error("Failed to fetch ACP details. No debug message found.");
+            }
+        }
+
+    } catch (error) {
+        console.error("Network or other error:", error);
+        throw error;
+    }
+}
+ 

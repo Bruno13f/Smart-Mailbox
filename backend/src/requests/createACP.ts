@@ -17,7 +17,7 @@ export function createACPBody(acpName: string, aeName: string, permissions: numb
               "acop": permissions
             }
           ]
-        }
+        },
       }
     };
   }
