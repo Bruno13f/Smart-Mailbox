@@ -1,6 +1,6 @@
 import { connectToDB } from "./mongo";
 import { config } from "dotenv";
-import { createACP, createAE } from "./acmeClient";
+import { createACP, createAE, createContainer } from "./acmeClient";
 import { getLastMailCount, getLastTemperature, parseJSONBody } from "./utils";
 import { addClient, removeClient, notifyAllClients } from "./ws-clients";
 config();
@@ -56,6 +56,8 @@ async function handleRestRequest(req: Request): Promise<Response> {
     try {
       response += await createACP();
       response += await createAE();
+      response += await createContainer("mailbox");
+      response += await createContainer("temperatures");
       return json({ message: "OneM2M setup completed" + response }, 201);
     } catch (err: any) {
       console.error("Error in /setupOneM2M:", err);
