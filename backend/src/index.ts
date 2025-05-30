@@ -58,6 +58,7 @@ async function handleRestRequest(req: Request): Promise<Response> {
       response += await createAE();
       return json({ message: "OneM2M setup completed" + response }, 201);
     } catch (err: any) {
+      console.error("Error in /setupOneM2M:", err);
       return json(
         { error: err.message || "Failed to setup OneM2M" },
         500

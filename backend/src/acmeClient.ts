@@ -41,8 +41,6 @@ export async function createACP() {
             body: JSON.stringify(requestBody)
         });
 
-        console.log(response.status)
-
         if (response.ok) {
             return "\nACP created successfully";
         } else if (response.status == 409) {
@@ -82,7 +80,7 @@ export async function createAE() {
             const resText = await response.text();
         
             if (resText.includes("Originator has already registered")) {
-                return "AE already registered, skipping creation.";
+                return "\nAE already exists";
             }
         
             console.error("Error creating AE:", resText);
@@ -97,11 +95,13 @@ export async function createAE() {
 
 export async function getACPDetails() {
     const req_id = `reqSmartMailbox_${Math.floor(100 + Math.random() * 900)}`;
-    const header = generateHeader(originator!, req_id, CREATE_ACP);
+    const header = generateHeader(originator!, req_id, 0);
+
+    // SENAO HOUVER DELAY 1SEG = BUG INSANO
+    await new Promise(res => setTimeout(res, 1000));
 
     try {
         const response = await fetch(`${acme_url}/~/${cse_id}/${cse_name}/${acp_name}`, {
-            method: "GET",
             headers: header,
         });
 
@@ -114,11 +114,14 @@ export async function getACPDetails() {
                 throw new Error("Unexpected response structure. 'm2m:acp' not found.");
             }
         } else {
-            const errorData = await response.json() as { [key: string]: any};
-            if (errorData["m2m:dbg"]) {
-                const errorMessage = errorData["m2m:dbg"];
-                throw new Error(errorMessage);
-            } else {
+            let errorText = await response.text();
+            try {
+                const errorData = JSON.parse(errorText);
+                if (errorData["m2m:dbg"]) {
+                    const errorMessage = errorData["m2m:dbg"];
+                    throw new Error(errorMessage);
+                }
+            } catch {
                 throw new Error("Failed to fetch ACP details. No debug message found.");
             }
         }
@@ -128,4 +131,3 @@ export async function getACPDetails() {
         throw error;
     }
 }
- 
