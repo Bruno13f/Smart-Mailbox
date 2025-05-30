@@ -58,21 +58,32 @@ async function handleRestRequest(req: Request): Promise<Response> {
   }
 
   if (method === "POST" && pathname === "/setupOneM2M") {
-    let response = "";
+    const responseParts: string[] = [];
+
     try {
-      response += await createACP();
-      response += await createAE();
-      response += await createContainer("mailbox");
-      response += await createContainer("temperatures");
+      responseParts.push(await createACP());
+      responseParts.push(await createAE());
 
-      response += await createContentInstance("mailbox", "Novo pacote entregue às 11:00");
-      // response += await createContentInstance("temperatures", "21.3°C");
+      // Criar os containers em paralelo
+      const containerResults = await Promise.all([
+        createContainer("mailbox"),
+        createContainer("temperatures"),
+      ]);
+      responseParts.push(...containerResults);
 
-      return json({ message: "OneM2M setup completed" + response }, 201);
+      // Criar as content instances em paralelo
+      const contentResults = await Promise.all([
+        createContentInstance("mailbox", "Novo pacote entregue às 11:00"),
+        createContentInstance("temperatures", "21.3°C"),
+      ]);
+      responseParts.push(...contentResults);
+
+      return json({ message: "OneM2M setup completed\n" + responseParts.join("\n") }, 201);
     } catch (err: any) {
       console.error("Error in /setupOneM2M:", err);
       return json({ error: err.message || "Failed to setup OneM2M" }, 500);
     }
+
   }
 
   if (method === "GET" && pathname === "/temperature") {
