@@ -1,6 +1,12 @@
 import { connectToDB } from "./mongo";
 import { config } from "dotenv";
-import { createACP, createAE, createContainer,  createContentInstance} from "./acmeClient";
+import {
+  createACP,
+  createAE,
+  createContainer,
+  createContentInstance,
+  checkAEExists,
+} from "./acmeClient";
 import { getLastMailCount, getLastTemperature, parseJSONBody } from "./utils";
 import { addClient, removeClient, notifyAllClients } from "./ws-clients";
 config();
@@ -64,6 +70,11 @@ async function handleRestRequest(req: Request): Promise<Response> {
       responseParts.push(await createACP());
       responseParts.push(await createAE());
 
+      const ae_exists = await checkAEExists();
+      if (!ae_exists) {
+        throw new Error("AE does not exist. Please create the AE first.");
+      }
+
       // Criar os containers em paralelo
       const containerResults = await Promise.all([
         createContainer("mailbox"),
@@ -72,18 +83,20 @@ async function handleRestRequest(req: Request): Promise<Response> {
       responseParts.push(...containerResults);
 
       // Criar as content instances em paralelo
-      const contentResults = await Promise.all([
-        createContentInstance("mailbox", "Novo pacote entregue às 11:00"),
-        createContentInstance("temperatures", "21.3°C"),
-      ]);
-      responseParts.push(...contentResults);
+      // const contentResults = await Promise.all([
+      //   createContentInstance("mailbox", "Novo pacote entregue às 11:00"),
+      //   createContentInstance("temperatures", "21.3°C"),
+      // ]);
+      // responseParts.push(...contentResults);
 
-      return json({ message: "OneM2M setup completed\n" + responseParts.join("\n") }, 201);
+      return json(
+        { message: "OneM2M setup completed\n" + responseParts.join("\n") },
+        201
+      );
     } catch (err: any) {
       console.error("Error in /setupOneM2M:", err);
       return json({ error: err.message || "Failed to setup OneM2M" }, 500);
     }
-
   }
 
   if (method === "GET" && pathname === "/temperature") {
@@ -157,7 +170,7 @@ function json(obj: any, status = 200) {
 const port = Number(process.env.PORT) || 3000;
 Bun.serve({
   port,
-  idleTimeout: 255,
+  idleTimeout: 20, // 20 seconds
   fetch(req, server) {
     if (new URL(req.url).pathname === "/ws" && server.upgrade) {
       server.upgrade(req);
