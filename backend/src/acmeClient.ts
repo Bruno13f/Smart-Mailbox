@@ -173,7 +173,7 @@ export async function createContentInstance(
   content: string
 ) {
   const req_id = `reqContent_${Math.floor(100 + Math.random() * 900)}`;
-  const headers = generateHeader(ae_name, req_id, CREATE_CIN);
+  const header = generateHeader(ae_name, req_id, CREATE_CIN);
   const requestBody = createCIN(content);
 
   try {
@@ -181,7 +181,7 @@ export async function createContentInstance(
       `${acme_url}/~/${cse_id}/${cse_name}/${ae_name}/${containerName}`,
       {
         method: "POST",
-        headers,
+        headers: header,
         body: JSON.stringify(requestBody),
       }
     );
