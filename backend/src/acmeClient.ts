@@ -3,6 +3,7 @@ import { createACPBody } from "./requests/createACP";
 import { createAEBody } from "./requests/createAE";
 import { generateHeader } from "./requests/header";
 import { createContainerBody } from "./requests/createContainer";
+import { createCIN } from "./requests/createCIN";
 
 config();
 
@@ -16,6 +17,7 @@ const ALL = 63;
 const CREATE_ACP = 1;
 const CREATE_AE = 2;
 const CREATE_CNT = 3;
+const CREATE_CIN = 4;
 
 const acme_url = process.env.ACME_URL;
 const cse_id = process.env.CSE_ID;
@@ -171,16 +173,8 @@ export async function createContentInstance(
   content: string
 ) {
   const req_id = `reqContent_${Math.floor(100 + Math.random() * 900)}`;
-  const resourceType = 4; // ty=4 = ContentInstance
-  const headers = generateHeader(ae_name, req_id, resourceType);
-
-  const body = {
-    "m2m:cin": {
-      con: content,
-      cnf: "text/plain:0",
-      lbl: [new Date().toISOString()], // metadado opcional para ajudar a não ser considerado duplicado
-    },
-  };
+  const headers = generateHeader(ae_name, req_id, CREATE_CIN);
+  const requestBody = createCIN(content);
 
   try {
     const response = await fetch(
@@ -188,7 +182,7 @@ export async function createContentInstance(
       {
         method: "POST",
         headers,
-        body: JSON.stringify(body),
+        body: JSON.stringify(requestBody),
       }
     );
 
