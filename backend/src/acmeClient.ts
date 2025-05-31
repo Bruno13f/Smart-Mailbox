@@ -4,8 +4,7 @@ import { createAEBody } from "./requests/createAE";
 import { generateHeader } from "./requests/header";
 import { createContainerBody } from "./requests/createContainer";
 import { createCIN } from "./requests/createCIN";
-import type { RequestInit, Response } from "node-fetch";
-import AbortController from "abort-controller";
+import { fetchWithRetry } from "./utils";
 
 config();
 
@@ -249,37 +248,4 @@ export async function checkAEExists(): Promise<boolean> {
     console.error("Network or other error while checking AE existence:", error);
     throw error;
   }
-}
-
-export async function fetchWithRetry(
-  url: string,
-  options: RequestInit,
-  retries = 3,
-  delay = 500
-): Promise<Response> {
-  for (let i = 0; i <= retries; i++) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000); // 5 segundos
-
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeout);
-
-      if (!response.ok && i === retries) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      return response;
-    } catch (error) {
-      if (i === retries) throw error;
-      console.warn(`Retry ${i + 1}/${retries} failed: ${error}`);
-      await new Promise((res) => setTimeout(res, delay));
-    }
-  }
-
-  throw new Error("Max retries exceeded");
 }
