@@ -83,11 +83,11 @@ async function handleRestRequest(req: Request): Promise<Response> {
       responseParts.push(...containerResults);
 
       // Criar as content instances em paralelo
-      // const contentResults = await Promise.all([
-      //   createContentInstance("mailbox", "Novo pacote entregue às 11:00"),
-      //   createContentInstance("temperatures", "21.3°C"),
-      // ]);
-      // responseParts.push(...contentResults);
+      const contentResults = await Promise.all([
+        createContentInstance("mailbox", "Novo pacote entregue às 13:00"),
+        createContentInstance("temperatures", "22.3°C"),
+      ]);
+      responseParts.push(...contentResults);
 
       return json(
         { message: "OneM2M setup completed\n" + responseParts.join("\n") },
@@ -170,7 +170,7 @@ function json(obj: any, status = 200) {
 const port = Number(process.env.PORT) || 3000;
 Bun.serve({
   port,
-  idleTimeout: 20, // 20 seconds
+  idleTimeout: 15, // 15 seconds
   fetch(req, server) {
     if (new URL(req.url).pathname === "/ws" && server.upgrade) {
       server.upgrade(req);

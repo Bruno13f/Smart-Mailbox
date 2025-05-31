@@ -176,8 +176,9 @@ export async function createContentInstance(
 
   const body = {
     "m2m:cin": {
-      con: content, // conteúdo principal
-      cnf: "text/plain:0", // tipo MIME
+      con: content,
+      cnf: "text/plain:0",
+      lbl: [new Date().toISOString()], // metadado opcional para ajudar a não ser considerado duplicado
     },
   };
 
