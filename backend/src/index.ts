@@ -170,7 +170,7 @@ function json(obj: any, status = 200) {
 const port = Number(process.env.PORT) || 3000;
 Bun.serve({
   port,
-  idleTimeout: 15, // 15 seconds
+  idleTimeout: 20, // 20 seconds
   fetch(req, server) {
     if (new URL(req.url).pathname === "/ws" && server.upgrade) {
       server.upgrade(req);

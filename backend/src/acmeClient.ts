@@ -4,6 +4,8 @@ import { createAEBody } from "./requests/createAE";
 import { generateHeader } from "./requests/header";
 import { createContainerBody } from "./requests/createContainer";
 import { createCIN } from "./requests/createCIN";
+import type { RequestInit, Response } from "node-fetch";
+import AbortController from "abort-controller";
 
 config();
 
@@ -177,7 +179,7 @@ export async function createContentInstance(
   const requestBody = createCIN(content);
 
   try {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `${acme_url}/~/${cse_id}/${cse_name}/${ae_name}/${containerName}`,
       {
         method: "POST",
@@ -186,10 +188,20 @@ export async function createContentInstance(
       }
     );
 
+    const resText = await response.text();
+    console.log(`Status: ${response.status}`);
+    console.log(`Response body: ${resText}`);
+    console.log(
+      `Request to create ContentInstance in '${containerName}' with content: ${content}`
+    );
+    console.log("Request Headers:", header);
+
     if (response.ok) {
+      console.log(
+        `ContentInstance created in '${containerName}' with content: ${content}`
+      );
       return `\nContentInstance created in '${containerName}' with content: ${content}`;
     } else {
-      const resText = await response.text();
       console.error("Error creating ContentInstance:", resText);
       throw new Error(`Failed to create ContentInstance: ${resText}`);
     }
@@ -237,4 +249,37 @@ export async function checkAEExists(): Promise<boolean> {
     console.error("Network or other error while checking AE existence:", error);
     throw error;
   }
+}
+
+export async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retries = 3,
+  delay = 500
+): Promise<Response> {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000); // 5 segundos
+
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok && i === retries) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      return response;
+    } catch (error) {
+      if (i === retries) throw error;
+      console.warn(`Retry ${i + 1}/${retries} failed: ${error}`);
+      await new Promise((res) => setTimeout(res, delay));
+    }
+  }
+
+  throw new Error("Max retries exceeded");
 }
