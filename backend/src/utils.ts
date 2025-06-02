@@ -23,6 +23,17 @@ export async function getLastTemperature(db: Db): Promise<number> {
   return temperature;
 }
 
+export async function getLastHumidity(db: Db): Promise<number> {
+  const last = await db
+    .collection("humidity")
+    .find()
+    .sort({ timestamp: -1 })
+    .limit(1)
+    .toArray();
+  const humidity = last[0]?.humidity ?? 0;
+  return humidity;
+}
+
 export async function parseJSONBody(req: Request): Promise<any> {
   try {
     return JSON.parse(await req.text());

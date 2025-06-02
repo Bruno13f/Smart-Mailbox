@@ -9,7 +9,7 @@ import {
   defaultConfig,
   butlerConfig,
 } from "./acmeClient";
-import { getLastMailCount, getLastTemperature, parseJSONBody } from "./utils";
+import { getLastHumidity, getLastMailCount, getLastTemperature, parseJSONBody } from "./utils";
 import { addClient, removeClient, notifyAllClients } from "./ws-clients";
 config();
 
@@ -33,6 +33,10 @@ const websocketHandlers = {
   },
   close: removeClient,
 };
+
+const CONTAINER_MAILBOX = "mailbox";
+const CONTAINER_TEMPERATURE = "temperature";
+const CONTAINER_HUMIDITY = "humidity";
 
 async function handleRestRequest(req: Request): Promise<Response> {
   const url = new URL(req.url);
@@ -89,17 +93,17 @@ async function handleRestRequest(req: Request): Promise<Response> {
 
           send("Creating containers...");
           const containerResultsSmartMailbox = await Promise.all([
-            createContainer("mailbox", defaultConfig),
-            createContainer("temperature", defaultConfig),
-            createContainer("humidity", defaultConfig),
+            createContainer(CONTAINER_MAILBOX, defaultConfig),
+            createContainer(CONTAINER_TEMPERATURE, defaultConfig),
+            createContainer(CONTAINER_HUMIDITY, defaultConfig),
           ]);
           containerResultsSmartMailbox.forEach(send);
 
           send("\nCreating content instances...");
           const contentResultsSmartMailbox = await Promise.all([
-            createContentInstance("mailbox", "Novo pacote entregue às 13:00", defaultConfig),
-            createContentInstance("temperature", "22.3°C", defaultConfig),
-            createContentInstance("humidity", "54%", defaultConfig),
+            createContentInstance(CONTAINER_MAILBOX, "Novo pacote entregue às 13:00", defaultConfig),
+            createContentInstance(CONTAINER_TEMPERATURE, "22.3", defaultConfig),
+            createContentInstance(CONTAINER_HUMIDITY, "54", defaultConfig),
           ]);
           contentResultsSmartMailbox.forEach(send);
           console.log("\nOneM2M SmartMailbox setup completed.")
@@ -124,17 +128,17 @@ async function handleRestRequest(req: Request): Promise<Response> {
 
           send("Creating containers...");
           const containerResultsButler = await Promise.all([
-            createContainer("mailbox", butlerConfig),
-            createContainer("temperature", butlerConfig),
-            createContainer("humidity", butlerConfig),
+            createContainer(CONTAINER_MAILBOX, butlerConfig),
+            createContainer(CONTAINER_TEMPERATURE, butlerConfig),
+            createContainer(CONTAINER_HUMIDITY, butlerConfig),
           ]);
           containerResultsButler.forEach(send);
 
           send("\nCreating content instances...");
           const contentResultsButler = await Promise.all([
-            createContentInstance("mailbox", "Tens novo correio", butlerConfig),
-            createContentInstance("temperature", "22.3°C", butlerConfig),
-            createContentInstance("humidity", "54%", butlerConfig),
+            createContentInstance(CONTAINER_MAILBOX, "Tens novo correio", butlerConfig),
+            createContentInstance(CONTAINER_TEMPERATURE, "22.3", butlerConfig),
+            createContentInstance(CONTAINER_HUMIDITY, "54", butlerConfig),
           ]);
           contentResultsButler.forEach(send);
           console.log("\nOneM2M Butler setup completed.")
@@ -159,7 +163,7 @@ async function handleRestRequest(req: Request): Promise<Response> {
 
   if (method === "GET" && pathname === "/temperature") {
     try {
-      const temperature = await getLastTemperature(db);
+      const temperature = await getLastHumidity(db);
       return json({ temperature });
     } catch {
       return json({ error: "Failed to fetch temperature data" }, 500);
@@ -170,6 +174,12 @@ async function handleRestRequest(req: Request): Promise<Response> {
     try {
       const body = await parseJSONBody(req);
       if (body.mail !== true) return json({ message: "No mail received" });
+
+      let contentResults = await Promise.all([
+        createContentInstance(CONTAINER_MAILBOX, "Tens novo correio", defaultConfig),
+        createContentInstance(CONTAINER_MAILBOX, "Novo pacote entregue às 13:00", butlerConfig),
+      ]);
+
       const mailCollection = db.collection("mailbox");
       const newCount = (await getLastMailCount(db)) + 1;
       await mailCollection.insertOne({
@@ -179,7 +189,7 @@ async function handleRestRequest(req: Request): Promise<Response> {
 
       notifyAllClients("new-mail", { count: newCount });
 
-      return json({ message: "Mail event logged", count: newCount }, 201);
+      return json({ message: "Mail event logged", acme: contentResults, count: newCount }, 201);
     } catch (err: any) {
       return json(
         { error: err.message || "Failed to handle /mail request" },
@@ -194,16 +204,58 @@ async function handleRestRequest(req: Request): Promise<Response> {
       if (typeof body.temperature !== "number")
         throw new Error("Invalid temperature");
 
+      const temperature = body.temperature;
+
+      let contentResults = await Promise.all([
+        createContentInstance(CONTAINER_TEMPERATURE, temperature, defaultConfig),
+        createContentInstance(CONTAINER_TEMPERATURE, temperature, butlerConfig),
+      ]);
+
       await db
         .collection("temperatures")
-        .insertOne({ temperature: body.temperature, timestamp: new Date() });
+        .insertOne({ temperature: temperature, timestamp: new Date() });
 
-      notifyAllClients("new-temperature", { temperature: body.temperature });
+      notifyAllClients("new-temperature", { temperature });
 
-      return json({ message: "Temperature saved" }, 201);
+      return json({ message: "Temperature saved", acme: contentResults }, 201);
     } catch (err: any) {
       return json(
         { error: err.message || "Failed to handle /temperature request" },
+        400
+      );
+    }
+  }
+
+  if (method === "GET" && pathname === "/humidity") {
+    try {
+      const humidity = await getLastTemperature(db);
+      return json({ humidity });
+    } catch {
+      return json({ error: "Failed to fetch humidity data" }, 500);
+    }
+  }
+
+  if (method === "POST" && pathname === "/humidity") {
+    try {
+      const body = await parseJSONBody(req);
+      if (typeof body.humidity !== "number")
+        throw new Error("Invalid humidity");
+
+      const humidity = body.humidity;
+
+      let contentResults = await Promise.all([
+        createContentInstance(CONTAINER_HUMIDITY, humidity, defaultConfig),
+        createContentInstance(CONTAINER_HUMIDITY, humidity, butlerConfig),
+      ]);
+
+      await db
+        .collection("humidity")
+        .insertOne({ humidity: humidity, timestamp: new Date() });
+
+      return json({ message: "Humidity saved", acme: contentResults }, 201);
+    } catch (err: any) {
+      return json(
+        { error: err.message || "Failed to handle /humidity request" },
         400
       );
     }
