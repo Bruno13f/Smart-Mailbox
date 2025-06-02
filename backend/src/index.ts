@@ -6,6 +6,7 @@ import {
   createContainer,
   createContentInstance,
   checkAEExists,
+  defaultConfig,
 } from "./acmeClient";
 import { getLastMailCount, getLastTemperature, parseJSONBody } from "./utils";
 import { addClient, removeClient, notifyAllClients } from "./ws-clients";
@@ -64,39 +65,57 @@ async function handleRestRequest(req: Request): Promise<Response> {
   }
 
   if (method === "POST" && pathname === "/setupOneM2M") {
-    const responseParts: string[] = [];
+    const stream = new ReadableStream({
+      async start(controller) {
+        const send = (msg: string) => controller.enqueue(msg + "\n");
 
-    try {
-      responseParts.push(await createACP());
-      responseParts.push(await createAE());
+        try {
+          send("Creating ACP...");
+          send(await createACP(defaultConfig));
 
-      const ae_exists = await checkAEExists();
-      if (!ae_exists) {
-        throw new Error("AE does not exist. Please create the AE first.");
+          send("Creating AE...");
+          send(await createAE(defaultConfig));
+
+          const ae_exists = await checkAEExists(defaultConfig);
+          if (!ae_exists) {
+            send("AE does not exist. Please create the AE first.");
+            controller.close();
+            return;
+          }
+          send("\nAE exists.\n");
+
+          send("Creating containers...");
+          const containerResults = await Promise.all([
+            createContainer("mailbox", defaultConfig),
+            createContainer("temperature", defaultConfig),
+            createContainer("humidity", defaultConfig),
+          ]);
+          containerResults.forEach(send);
+
+          send("\nCreating content instances...");
+          const contentResults = await Promise.all([
+            createContentInstance("mailbox", "Novo pacote entregue às 13:00", defaultConfig),
+            createContentInstance("temperature", "22.3°C", defaultConfig),
+            createContentInstance("humidity", "54%", defaultConfig),
+          ]);
+          contentResults.forEach(send);
+          console.log("\nOneM2M setup completed.")
+          send("\nOneM2M setup completed.");
+        } catch (err: any) {
+          send("Error: " + (err.message || "Failed to setup OneM2M"));
+        }
+        controller.close();
       }
+    });
 
-      // Criar os containers em paralelo
-      const containerResults = await Promise.all([
-        createContainer("mailbox"),
-        createContainer("temperatures"),
-      ]);
-      responseParts.push(...containerResults);
-
-      // Criar as content instances em paralelo
-      const contentResults = await Promise.all([
-        createContentInstance("mailbox", "Novo pacote entregue às 13:00"),
-        createContentInstance("temperatures", "22.3°C"),
-      ]);
-      responseParts.push(...contentResults);
-
-      return json(
-        { message: "OneM2M setup completed\n" + responseParts.join("\n") },
-        201
-      );
-    } catch (err: any) {
-      console.error("Error in /setupOneM2M:", err);
-      return json({ error: err.message || "Failed to setup OneM2M" }, 500);
-    }
+    return new Response(stream, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Access-Control-Allow-Origin": "*",
+        "Transfer-Encoding": "chunked",
+      },
+    });
   }
 
   if (method === "GET" && pathname === "/temperature") {

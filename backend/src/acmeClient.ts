@@ -20,36 +20,54 @@ const CREATE_AE = 2;
 const CREATE_CNT = 3;
 const CREATE_CIN = 4;
 
-const acme_url = process.env.ACME_URL;
-const cse_id = process.env.CSE_ID;
-const cse_name = process.env.CSE_NAME;
-const originator = process.env.ORIGINATOR;
-
-if (!acme_url || !cse_id || !cse_name || !originator) {
-  throw new Error(
-    "ACME_URL, CSE_ID, CSE_NAME, and ORIGINATOR must be defined in the .env file"
-  );
+export interface AcmeConfig {
+  acme_url: string;
+  cse_id: string;
+  cse_name: string;
+  originator: string;
 }
+
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
+}
+
+export const defaultConfig: AcmeConfig = {
+  acme_url: requireEnv("ACME_URL"),
+  cse_id: requireEnv("CSE_ID"),
+  cse_name: requireEnv("CSE_NAME"),
+  originator: requireEnv("ORIGINATOR"),
+};
+
+export const butlerConfig: AcmeConfig = {
+  acme_url: requireEnv("BUTLER_ACME_URL"),
+  cse_id: requireEnv("BUTLER_CSE_ID")!,
+  cse_name: requireEnv("BUTLER_CSE_NAME")!,
+  originator: requireEnv("BUTLER_ORIGINATOR")!,
+};
 
 const acp_name = "acpSmartMailbox";
 const ae_name = "CSmartMailbox";
 
-export async function createACP() {
+export async function createACP(config: AcmeConfig) {
   const req_id = `reqSmartMailbox_${Math.floor(100 + Math.random() * 900)}`;
   const requestBody = createACPBody(acp_name, ae_name, ALL);
-  const header = generateHeader(originator!, req_id, CREATE_ACP);
+  const header = generateHeader(config.originator, req_id, CREATE_ACP);
 
   try {
-    const response = await fetch(`${acme_url}/~/${cse_id}/${cse_name}`, {
+    const response = await fetch(`${config.acme_url}/~/${config.cse_id}/${config.cse_name}`, {
       method: "POST",
       headers: header,
       body: JSON.stringify(requestBody),
     });
 
     if (response.ok) {
-      return "\nACP created successfully";
+      console.log("\nACP created Successfully");
+      return "ACP created successfully\n";
     } else if (response.status == 409) {
-      return "\nACP already exists";
+        console.log("\nACP already exists");
+      return "ACP already exists\n";
     } else {
       const resText = await response.text();
       console.error("Error creating ACP:", resText);
@@ -61,28 +79,32 @@ export async function createACP() {
   }
 }
 
-export async function createAE() {
-  const acp_ri = await getACPDetails();
+export async function createAE(config: AcmeConfig) {
+  // ao obter detalhes ACP verifica se esta existe
+  const acp_ri = await getACPDetails(config); 
   const req_id = `reqSmartMailbox_${Math.floor(100 + Math.random() * 900)}`;
-  const requestBody = createAEBody(acp_ri, ae_name, acme_url + "/");
+  const requestBody = createAEBody(acp_ri, ae_name, config.acme_url + "/");
   const header = generateHeader(ae_name, req_id, CREATE_AE);
 
   try {
-    const response = await fetch(`${acme_url}/~/${cse_id}/${cse_name}`, {
+    const response = await fetch(`${config.acme_url}/~/${config.cse_id}/${config.cse_name}`, {
       method: "POST",
       headers: header,
       body: JSON.stringify(requestBody),
     });
 
     if (response.ok) {
-      return "\nAE Created successfully";
+      console.log("\nAE created Successfully\n");
+      return "AE created successfully";
     } else if (response.status === 404) {
-      return "\nACP not found - The specified ACP does not exist";
+      console.log("\nACP not found\n");
+      return "ACP not found";
     } else {
       const resText = await response.text();
 
       if (resText.includes("Originator has already registered")) {
-        return "\nAE already exists";
+        console.log("\nAE already exists");
+        return "AE already exists";
       }
 
       console.error("Error creating AE:", resText);
@@ -94,16 +116,16 @@ export async function createAE() {
   }
 }
 
-export async function getACPDetails() {
+export async function getACPDetails(config: AcmeConfig) {
   const req_id = `reqSmartMailbox_${Math.floor(100 + Math.random() * 900)}`;
-  const header = generateHeader(originator!, req_id, 0);
+  const header = generateHeader(config.originator!, req_id, 0);
 
   // SENAO HOUVER DELAY 1SEG = BUG INSANO
   await new Promise((res) => setTimeout(res, 100));
 
   try {
     const response = await fetch(
-      `${acme_url}/~/${cse_id}/${cse_name}/${acp_name}`,
+      `${config.acme_url}/~/${config.cse_id}/${config.cse_name}/${acp_name}`,
       {
         headers: header,
       }
@@ -135,18 +157,15 @@ export async function getACPDetails() {
   }
 }
 
-export async function createContainer(cntName: string) {
-  // const ae_exists = await checkAEExists();
-  // if (!ae_exists) {
-  //   throw new Error("AE does not exist. Please create the AE first.");
-  // }
+export async function createContainer(cntName: string, config: AcmeConfig) {
+
   const req_id = `reqSmartMailbox_${Math.floor(100 + Math.random() * 900)}`;
   const requestBody = createContainerBody(cntName);
   const header = generateHeader(ae_name, req_id, CREATE_CNT);
 
   try {
     const response = await fetch(
-      `${acme_url}/~/${cse_id}/${cse_name}/${ae_name}`,
+      `${config.acme_url}/~/${config.cse_id}/${config.cse_name}/${ae_name}`,
       {
         method: "POST",
         headers: header,
@@ -155,9 +174,11 @@ export async function createContainer(cntName: string) {
     );
 
     if (response.ok) {
-      return `\nContainer ${cntName} created successfully`;
+      console.log(`Container ${cntName} created successfully`);
+      return `Container ${cntName} created successfully`;
     } else if (response.status === 409) {
-      return `\nContainer ${cntName} already exists`;
+      console.log(`\nContainer ${cntName} already exists`);
+      return `Container ${cntName} already exists`;
     } else {
       const resText = await response.text();
       console.error("Error creating Container:", resText);
@@ -171,7 +192,8 @@ export async function createContainer(cntName: string) {
 
 export async function createContentInstance(
   containerName: string,
-  content: string
+  content: string,
+  config: AcmeConfig
 ) {
   const req_id = `reqContent_${Math.floor(100 + Math.random() * 900)}`;
   const header = generateHeader(ae_name, req_id, CREATE_CIN);
@@ -179,7 +201,7 @@ export async function createContentInstance(
 
   try {
     const response = await fetchWithRetry(
-      `${acme_url}/~/${cse_id}/${cse_name}/${ae_name}/${containerName}`,
+      `${config.acme_url}/~/${config.cse_id}/${config.cse_name}/${ae_name}/${containerName}`,
       {
         method: "POST",
         headers: header,
@@ -188,18 +210,12 @@ export async function createContentInstance(
     );
 
     const resText = await response.text();
-    console.log(`Status: ${response.status}`);
-    console.log(`Response body: ${resText}`);
-    console.log(
-      `Request to create ContentInstance in '${containerName}' with content: ${content}`
-    );
-    console.log("Request Headers:", header);
 
     if (response.ok) {
       console.log(
         `ContentInstance created in '${containerName}' with content: ${content}`
       );
-      return `\nContentInstance created in '${containerName}' with content: ${content}`;
+      return `ContentInstance created in '${containerName}' with content: ${content}`;
     } else {
       console.error("Error creating ContentInstance:", resText);
       throw new Error(`Failed to create ContentInstance: ${resText}`);
@@ -210,16 +226,16 @@ export async function createContentInstance(
   }
 }
 
-export async function checkAEExists(): Promise<boolean> {
+export async function checkAEExists(config: AcmeConfig): Promise<boolean> {
   const req_id = `reqSmartMailbox_${Math.floor(100 + Math.random() * 900)}`;
-  const header = generateHeader(originator!, req_id, 0); // Operation 0 = RETRIEVE
+  const header = generateHeader(config.originator!, req_id, 0); // Operation 0 = RETRIEVE
 
   // Avoid timing bug with ACME server
   await new Promise((res) => setTimeout(res, 100));
 
   try {
     const response = await fetch(
-      `${acme_url}/~/${cse_id}/${cse_name}/${ae_name}`,
+      `${config.acme_url}/~/${config.cse_id}/${config.cse_name}/${ae_name}`,
       {
         headers: header,
       }
