@@ -1,4 +1,3 @@
-import { connectToDB } from "./mongo";
 import { config } from "dotenv";
 import {
   createACP,
@@ -10,9 +9,6 @@ import {
   butlerConfig,
 } from "./acmeClient";
 import {
-  getLastHumidity,
-  getLastMailCount,
-  getLastTemperature,
   parseJSONBody,
 } from "./utils";
 import { addClient, removeClient, notifyAllClients } from "./ws-clients";
