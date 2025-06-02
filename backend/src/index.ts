@@ -300,9 +300,18 @@ async function handleRestRequest(req: Request): Promise<Response> {
   if (method === "POST" && pathname === "/reminderMail") {
     try {
       const body = await parseJSONBody(req);
-      if (typeof body.message !== "string") throw new Error("Invalid message");
+      if (typeof body.flag !== "boolean") throw new Error("Invalid flag");
 
-      const message = body.message;
+      const flag = body.flag;
+      let message = ""
+
+      if (flag){
+        // MENSAGEM REMINER MAIL CUSTOMIZADA OPENAI
+        message = "Lembrar que tens correio novo";
+      }else{
+        // MENSAGEM CAIXA DE CORREIO VAZIA CUSTOMIZADA OPENAI
+        message = "A tua caixa de correio está vazia";
+      }
 
       let contentResults = await Promise.all([
         createContentInstance(CONTAINER_MAILBOX, message, defaultConfig),
@@ -312,7 +321,7 @@ async function handleRestRequest(req: Request): Promise<Response> {
       return json({ message: "Message saved", acme: contentResults }, 201);
     } catch (err: any) {
       return json(
-        { error: err.message || "Failed to handle /humidity request" },
+        { error: err.message || "Failed to handle /reminderMail request" },
         400
       );
     }
