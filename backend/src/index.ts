@@ -7,6 +7,7 @@ import {
   createContentInstance,
   checkAEExists,
   defaultConfig,
+  butlerConfig,
 } from "./acmeClient";
 import { getLastMailCount, getLastTemperature, parseJSONBody } from "./utils";
 import { addClient, removeClient, notifyAllClients } from "./ws-clients";
@@ -70,14 +71,16 @@ async function handleRestRequest(req: Request): Promise<Response> {
         const send = (msg: string) => controller.enqueue(msg + "\n");
 
         try {
+          send("=========ACME SMART MAILBOX=========\n");
+          console.log("\n=========ACME SMART MAILBOX=========");
           send("Creating ACP...");
           send(await createACP(defaultConfig));
 
           send("Creating AE...");
           send(await createAE(defaultConfig));
 
-          const ae_exists = await checkAEExists(defaultConfig);
-          if (!ae_exists) {
+          const ae_exists_smartmailbox = await checkAEExists(defaultConfig);
+          if (!ae_exists_smartmailbox) {
             send("AE does not exist. Please create the AE first.");
             controller.close();
             return;
@@ -85,22 +88,58 @@ async function handleRestRequest(req: Request): Promise<Response> {
           send("\nAE exists.\n");
 
           send("Creating containers...");
-          const containerResults = await Promise.all([
+          const containerResultsSmartMailbox = await Promise.all([
             createContainer("mailbox", defaultConfig),
             createContainer("temperature", defaultConfig),
             createContainer("humidity", defaultConfig),
           ]);
-          containerResults.forEach(send);
+          containerResultsSmartMailbox.forEach(send);
 
           send("\nCreating content instances...");
-          const contentResults = await Promise.all([
+          const contentResultsSmartMailbox = await Promise.all([
             createContentInstance("mailbox", "Novo pacote entregue às 13:00", defaultConfig),
             createContentInstance("temperature", "22.3°C", defaultConfig),
             createContentInstance("humidity", "54%", defaultConfig),
           ]);
-          contentResults.forEach(send);
-          console.log("\nOneM2M setup completed.")
-          send("\nOneM2M setup completed.");
+          contentResultsSmartMailbox.forEach(send);
+          console.log("\nOneM2M SmartMailbox setup completed.")
+          send("\nOneM2M SmartMailbox setup completed.");
+
+          send("\n=========ACME BUTLER=========\n");
+          console.log("\n=========ACME BUTLER=========");
+
+          send("Creating ACP...");
+          send(await createACP(butlerConfig));
+
+          send("Creating AE...");
+          send(await createAE(butlerConfig));
+
+          const ae_exists_butler = await checkAEExists(butlerConfig);
+          if (!ae_exists_butler) {
+            send("AE does not exist. Please create the AE first.");
+            controller.close();
+            return;
+          }
+          send("\nAE exists.\n");
+
+          send("Creating containers...");
+          const containerResultsButler = await Promise.all([
+            createContainer("mailbox", butlerConfig),
+            createContainer("temperature", butlerConfig),
+            createContainer("humidity", butlerConfig),
+          ]);
+          containerResultsButler.forEach(send);
+
+          send("\nCreating content instances...");
+          const contentResultsButler = await Promise.all([
+            createContentInstance("mailbox", "Tens novo correio", butlerConfig),
+            createContentInstance("temperature", "22.3°C", butlerConfig),
+            createContentInstance("humidity", "54%", butlerConfig),
+          ]);
+          contentResultsButler.forEach(send);
+          console.log("\nOneM2M Butler setup completed.")
+          send("\nOneM2M Butler setup completed.");
+
         } catch (err: any) {
           send("Error: " + (err.message || "Failed to setup OneM2M"));
         }
