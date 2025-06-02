@@ -22,17 +22,6 @@ import {
 } from "./services/openaiService";
 config();
 
-let db: Awaited<ReturnType<typeof connectToDB>>;
-await (async () => {
-  // even if no connection to db is made (we are at school, port is disabled),
-  // we can still run the api to serve the acme requests to onem2m
-  try {
-    db = await connectToDB();
-  } catch (error) {
-    console.log("Erro ao conectar ao MongoDB");
-  }
-})();
-
 const websocketHandlers = {
   open: addClient,
   message(ws: any, message: any) {
@@ -68,15 +57,6 @@ async function handleRestRequest(req: Request): Promise<Response> {
       status: 200,
       headers: { "Access-Control-Allow-Origin": "*" },
     });
-
-  if (method === "GET" && pathname === "/mail") {
-    try {
-      const count = await getLastMailCount(db);
-      return json({ count });
-    } catch {
-      return json({ error: "Failed to fetch mail data" }, 500);
-    }
-  }
 
   if (method === "POST" && pathname === "/setupOneM2M") {
     const stream = new ReadableStream({
@@ -177,15 +157,6 @@ async function handleRestRequest(req: Request): Promise<Response> {
     });
   }
 
-  if (method === "GET" && pathname === "/temperature") {
-    try {
-      const temperature = await getLastHumidity(db);
-      return json({ temperature });
-    } catch {
-      return json({ error: "Failed to fetch temperature data" }, 500);
-    }
-  }
-
   if (method === "POST" && pathname === "/mail") {
     try {
       const body = await parseJSONBody(req);
@@ -207,13 +178,7 @@ async function handleRestRequest(req: Request): Promise<Response> {
         createContentInstance(CONTAINER_MAILBOX, message, butlerConfig),
       ]);
 
-      const mailCollection = db.collection("mailbox");
-      const newCount = (await getLastMailCount(db)) + 1;
-      await mailCollection.insertOne({
-        count: newCount,
-        timestamp: new Date(),
-      });
-
+      const newCount = 1;
       notifyAllClients("new-mail", { count: newCount });
 
       return json(
@@ -245,10 +210,6 @@ async function handleRestRequest(req: Request): Promise<Response> {
         createContentInstance(CONTAINER_TEMPERATURE, temperature, butlerConfig),
       ]);
 
-      await db
-        .collection("temperatures")
-        .insertOne({ temperature: temperature, timestamp: new Date() });
-
       notifyAllClients("new-temperature", { temperature });
 
       return json({ message: "Temperature saved", acme: contentResults }, 201);
@@ -257,15 +218,6 @@ async function handleRestRequest(req: Request): Promise<Response> {
         { error: err.message || "Failed to handle /temperature request" },
         400
       );
-    }
-  }
-
-  if (method === "GET" && pathname === "/humidity") {
-    try {
-      const humidity = await getLastTemperature(db);
-      return json({ humidity });
-    } catch {
-      return json({ error: "Failed to fetch humidity data" }, 500);
     }
   }
 
@@ -282,10 +234,6 @@ async function handleRestRequest(req: Request): Promise<Response> {
         createContentInstance(CONTAINER_HUMIDITY, humidity, butlerConfig),
       ]);
 
-      await db
-        .collection("humidity")
-        .insertOne({ humidity: humidity, timestamp: new Date() });
-
       return json({ message: "Humidity saved", acme: contentResults }, 201);
     } catch (err: any) {
       return json(
@@ -301,12 +249,12 @@ async function handleRestRequest(req: Request): Promise<Response> {
       if (typeof body.flag !== "boolean") throw new Error("Invalid flag");
 
       const flag = body.flag;
-      let message = ""
+      let message = "";
 
-      if (flag){
+      if (flag) {
         // MENSAGEM REMINER MAIL CUSTOMIZADA OPENAI
         message = "Lembrar que tens correio novo";
-      }else{
+      } else {
         // MENSAGEM CAIXA DE CORREIO VAZIA CUSTOMIZADA OPENAI
         message = "A tua caixa de correio está vazia";
       }
