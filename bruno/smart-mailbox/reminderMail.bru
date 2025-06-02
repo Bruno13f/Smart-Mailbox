@@ -1,0 +1,17 @@
+meta {
+  name: reminderMail
+  type: http
+  seq: 6
+}
+
+post {
+  url: http://localhost:3000/mail
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "mail": true
+  }
+}

@@ -18,6 +18,7 @@ import {
 import { addClient, removeClient, notifyAllClients } from "./ws-clients";
 import {
   getNotificationOpenAI,
+  NotificationType,
   type NotificationContent,
 } from "./services/openaiService";
 config();
@@ -35,6 +36,23 @@ const websocketHandlers = {
 const CONTAINER_MAILBOX = "mailbox";
 const CONTAINER_TEMPERATURE = "temperature";
 const CONTAINER_HUMIDITY = "humidity";
+
+async function generateAndSaveMailNotification(
+  promptType: NotificationType,
+  fallbackMessage: string
+): Promise<{ message: string; contentResults: any[] }> {
+  const notification = await getNotificationOpenAI(5, promptType);
+  const message = notification
+    ? `${notification.title} - ${notification.body}`
+    : fallbackMessage;
+
+  const contentResults = await Promise.all([
+    createContentInstance(CONTAINER_MAILBOX, message, defaultConfig),
+    createContentInstance(CONTAINER_MAILBOX, message, butlerConfig),
+  ]);
+
+  return { message, contentResults };
+}
 
 async function handleRestRequest(req: Request): Promise<Response> {
   const url = new URL(req.url);
@@ -90,20 +108,7 @@ async function handleRestRequest(req: Request): Promise<Response> {
           ]);
           containerResultsSmartMailbox.forEach(send);
 
-          // send("\nCreating content instances...");
-          // const timestamp = new Date().toISOString();
-          // const contentResultsSmartMailbox = await Promise.all([
-          //   createContentInstance(
-          //     CONTAINER_MAILBOX,
-          //     `Novo pacote entregue às ${timestamp}`,
-          //     defaultConfig
-          //   ),
-          //   createContentInstance(CONTAINER_TEMPERATURE, "22.3", defaultConfig),
-          //   createContentInstance(CONTAINER_HUMIDITY, "54", defaultConfig),
-          // ]);
-          // contentResultsSmartMailbox.forEach(send);
           send("\nOneM2M SmartMailbox setup completed.");
-
           send("\n=========ACME BUTLER=========\n");
 
           send("Creating ACP...");
@@ -128,17 +133,6 @@ async function handleRestRequest(req: Request): Promise<Response> {
           ]);
           containerResultsButler.forEach(send);
 
-          // send("\nCreating content instances...");
-          // const contentResultsButler = await Promise.all([
-          //   createContentInstance(
-          //     CONTAINER_MAILBOX,
-          //     "Tens novo correio",
-          //     butlerConfig
-          //   ),
-          //   createContentInstance(CONTAINER_TEMPERATURE, "22.3", butlerConfig),
-          //   createContentInstance(CONTAINER_HUMIDITY, "54", butlerConfig),
-          // ]);
-          // contentResultsButler.forEach(send);
           send("\nOneM2M Butler setup completed.");
         } catch (err: any) {
           send("Error: " + (err.message || "Failed to setup OneM2M"));
@@ -162,21 +156,10 @@ async function handleRestRequest(req: Request): Promise<Response> {
       const body = await parseJSONBody(req);
       if (body.mail !== true) return json({ message: "No mail received" });
 
-      let openAiMessage: NotificationContent | null =
-        await getNotificationOpenAI(5);
-      if (!openAiMessage) {
-        openAiMessage = {
-          title: "Olá tens novo correio!",
-          body: `Novo correio foi entregue.`,
-        };
-      }
-
-      const message = openAiMessage.title + openAiMessage.body;
-
-      let contentResults = await Promise.all([
-        createContentInstance(CONTAINER_MAILBOX, message, defaultConfig),
-        createContentInstance(CONTAINER_MAILBOX, message, butlerConfig),
-      ]);
+      const { message, contentResults } = await generateAndSaveMailNotification(
+        NotificationType.MAIL,
+        "Olá tens novo correio! Novo correio foi entregue."
+      );
 
       const newCount = 1;
       notifyAllClients("new-mail", { count: newCount });
@@ -248,21 +231,21 @@ async function handleRestRequest(req: Request): Promise<Response> {
       const body = await parseJSONBody(req);
       if (typeof body.flag !== "boolean") throw new Error("Invalid flag");
 
-      const flag = body.flag;
-      let message = "";
+      const isMailboxFilled = body.flag;
+      const promptType = isMailboxFilled
+        ? NotificationType.STILL_MAIL
+        : NotificationType.NO_MAIL;
 
-      if (flag) {
-        // MENSAGEM REMINER MAIL CUSTOMIZADA OPENAI
-        message = "Lembrar que tens correio novo";
-      } else {
-        // MENSAGEM CAIXA DE CORREIO VAZIA CUSTOMIZADA OPENAI
-        message = "A tua caixa de correio está vazia";
-      }
+      const fallbackMessage = isMailboxFilled
+        ? "Lembrar que tens correio novo"
+        : "A tua caixa de correio está vazia";
 
-      let contentResults = await Promise.all([
-        createContentInstance(CONTAINER_MAILBOX, message, defaultConfig),
-        createContentInstance(CONTAINER_MAILBOX, message, butlerConfig),
-      ]);
+      const { message, contentResults } = await generateAndSaveMailNotification(
+        promptType,
+        fallbackMessage
+      );
+
+      console.log("Generated reminder message:", message);
 
       return json({ message: "Message saved", acme: contentResults }, 201);
     } catch (err: any) {
