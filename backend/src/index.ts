@@ -176,6 +176,7 @@ async function handleRestRequest(req: Request): Promise<Response> {
       if (body.mail !== true) return json({ message: "No mail received" });
 
       let contentResults = await Promise.all([
+        // MENSAGEM CUSTOMIZADA OPENAI
         createContentInstance(CONTAINER_MAILBOX, "Tens novo correio", defaultConfig),
         createContentInstance(CONTAINER_MAILBOX, "Novo pacote entregue às 13:00", butlerConfig),
       ]);
