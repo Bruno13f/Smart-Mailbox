@@ -9,7 +9,12 @@ import {
   defaultConfig,
   butlerConfig,
 } from "./acmeClient";
-import { getLastHumidity, getLastMailCount, getLastTemperature, parseJSONBody } from "./utils";
+import {
+  getLastHumidity,
+  getLastMailCount,
+  getLastTemperature,
+  parseJSONBody,
+} from "./utils";
 import { addClient, removeClient, notifyAllClients } from "./ws-clients";
 config();
 
@@ -72,11 +77,13 @@ async function handleRestRequest(req: Request): Promise<Response> {
   if (method === "POST" && pathname === "/setupOneM2M") {
     const stream = new ReadableStream({
       async start(controller) {
-        const send = (msg: string) => controller.enqueue(msg + "\n");
+        const send = (msg: string) => {
+          console.log(msg);
+          controller.enqueue(msg + "\n");
+        };
 
         try {
           send("=========ACME SMART MAILBOX=========\n");
-          console.log("\n=========ACME SMART MAILBOX=========");
           send("Creating ACP...");
           send(await createACP(defaultConfig));
 
@@ -100,17 +107,20 @@ async function handleRestRequest(req: Request): Promise<Response> {
           containerResultsSmartMailbox.forEach(send);
 
           send("\nCreating content instances...");
+          const timestamp = new Date().toISOString();
           const contentResultsSmartMailbox = await Promise.all([
-            createContentInstance(CONTAINER_MAILBOX, "Novo pacote entregue às 13:00", defaultConfig),
+            createContentInstance(
+              CONTAINER_MAILBOX,
+              `Novo pacote entregue às ${timestamp}`,
+              defaultConfig
+            ),
             createContentInstance(CONTAINER_TEMPERATURE, "22.3", defaultConfig),
             createContentInstance(CONTAINER_HUMIDITY, "54", defaultConfig),
           ]);
           contentResultsSmartMailbox.forEach(send);
-          console.log("\nOneM2M SmartMailbox setup completed.")
           send("\nOneM2M SmartMailbox setup completed.");
 
           send("\n=========ACME BUTLER=========\n");
-          console.log("\n=========ACME BUTLER=========");
 
           send("Creating ACP...");
           send(await createACP(butlerConfig));
@@ -136,19 +146,21 @@ async function handleRestRequest(req: Request): Promise<Response> {
 
           send("\nCreating content instances...");
           const contentResultsButler = await Promise.all([
-            createContentInstance(CONTAINER_MAILBOX, "Tens novo correio", butlerConfig),
+            createContentInstance(
+              CONTAINER_MAILBOX,
+              "Tens novo correio",
+              butlerConfig
+            ),
             createContentInstance(CONTAINER_TEMPERATURE, "22.3", butlerConfig),
             createContentInstance(CONTAINER_HUMIDITY, "54", butlerConfig),
           ]);
           contentResultsButler.forEach(send);
-          console.log("\nOneM2M Butler setup completed.")
           send("\nOneM2M Butler setup completed.");
-
         } catch (err: any) {
           send("Error: " + (err.message || "Failed to setup OneM2M"));
         }
         controller.close();
-      }
+      },
     });
 
     return new Response(stream, {
@@ -175,6 +187,8 @@ async function handleRestRequest(req: Request): Promise<Response> {
       const body = await parseJSONBody(req);
       if (body.mail !== true) return json({ message: "No mail received" });
 
+      const timestamp = new Date().toISOString();
+
       let contentResults = await Promise.all([
         // MENSAGEM CUSTOMIZADA OPENAI
         createContentInstance(CONTAINER_MAILBOX, "Tens novo correio", defaultConfig),
@@ -190,7 +204,10 @@ async function handleRestRequest(req: Request): Promise<Response> {
 
       notifyAllClients("new-mail", { count: newCount });
 
-      return json({ message: "Mail event logged", acme: contentResults, count: newCount }, 201);
+      return json(
+        { message: "Mail event logged", acme: contentResults, count: newCount },
+        201
+      );
     } catch (err: any) {
       return json(
         { error: err.message || "Failed to handle /mail request" },
@@ -208,7 +225,11 @@ async function handleRestRequest(req: Request): Promise<Response> {
       const temperature = body.temperature;
 
       let contentResults = await Promise.all([
-        createContentInstance(CONTAINER_TEMPERATURE, temperature, defaultConfig),
+        createContentInstance(
+          CONTAINER_TEMPERATURE,
+          temperature,
+          defaultConfig
+        ),
         createContentInstance(CONTAINER_TEMPERATURE, temperature, butlerConfig),
       ]);
 
@@ -265,8 +286,7 @@ async function handleRestRequest(req: Request): Promise<Response> {
   if (method === "POST" && pathname === "/reminderMail") {
     try {
       const body = await parseJSONBody(req);
-      if (typeof body.message !== "string")
-        throw new Error("Invalid message");
+      if (typeof body.message !== "string") throw new Error("Invalid message");
 
       const message = body.message;
 
