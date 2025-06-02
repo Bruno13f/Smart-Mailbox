@@ -16,17 +16,21 @@ import {
   parseJSONBody,
 } from "./utils";
 import { addClient, removeClient, notifyAllClients } from "./ws-clients";
+import {
+  getNotificationOpenAI,
+  type NotificationContent,
+} from "./services/openaiService";
 config();
 
 let db: Awaited<ReturnType<typeof connectToDB>>;
 await (async () => {
   // even if no connection to db is made (we are at school, port is disabled),
   // we can still run the api to serve the acme requests to onem2m
-  try {
-    db = await connectToDB();
-  } catch (error) {
-    console.log("Erro ao conectar ao MongoDB");
-  }
+  // try {
+  //   db = await connectToDB();
+  // } catch (error) {
+  //   console.log("Erro ao conectar ao MongoDB");
+  // }
 })();
 
 const websocketHandlers = {
@@ -189,17 +193,20 @@ async function handleRestRequest(req: Request): Promise<Response> {
 
       const timestamp = new Date().toISOString();
 
+      let openAiMessage: NotificationContent | null =
+        await getNotificationOpenAI(5);
+      if (!openAiMessage) {
+        openAiMessage = {
+          title: "Novo pacote",
+          body: `Novo pacote entregue às ${timestamp}`,
+        };
+      }
+
+      const message = openAiMessage.title + " - " + openAiMessage.body;
+
       let contentResults = await Promise.all([
-        createContentInstance(
-          CONTAINER_MAILBOX,
-          "Tens novo correio",
-          defaultConfig
-        ),
-        createContentInstance(
-          CONTAINER_MAILBOX,
-          `Novo pacote entregue às ${timestamp}`,
-          butlerConfig
-        ),
+        createContentInstance(CONTAINER_MAILBOX, message, defaultConfig),
+        createContentInstance(CONTAINER_MAILBOX, message, butlerConfig),
       ]);
 
       const mailCollection = db.collection("mailbox");
