@@ -6,6 +6,7 @@ import MailLetter from "./components/MailLetter";
 import LetterCountDisplay from "./components/LetterCountDisplay";
 import MailButton from "./components/MailButton";
 import TemperatureDisplay from "./components/TemperatureDisplay";
+import HumidityDisplay from "./components/HumidityDisplay";
 import LedLightSensor from "./components/LedLightSensor";
 
 export default function App() {
@@ -14,6 +15,7 @@ export default function App() {
   const [flapOpen, setFlapOpen] = useState(false);
   const [letterCount, setLetterCount] = useState(0);
   const [temperature, setTemperature] = useState(0);
+  const [humidity, setHumidity] = useState(0);
   const [ledBlink, setLedBlink] = useState(false);
 
   // Track a list of letters, each with a unique id and animation state
@@ -93,6 +95,20 @@ export default function App() {
             setTimeout(() => setLedBlink(false), 200); // Blink
           }
         }
+
+        if (
+          data.message === "new-humidity" &&
+          data.data &&
+          data.data.humidity
+        ) {
+          const humidity = parseFloat(data.data.humidity);
+          console.log("Humidity:", humidity);
+          if (!isNaN(humidity)) {
+            setHumidity(humidity);
+            setLedBlink(true);
+            setTimeout(() => setLedBlink(false), 200); // Blink
+          }
+        }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
       }
@@ -103,42 +119,12 @@ export default function App() {
     return () => ws.close();
   }, []); // Only run once on mount
 
-  // Fetch initial letter count on mount
-  useEffect(() => {
-    fetch("http://localhost:3000/mail")
-      .then((res) => res.json())
-      .then((data) => {
-        if (typeof data.count === "number") {
-          setLetterCount(data.count);
-        }
-      })
-      .catch((err) =>
-        console.error("Failed to fetch initial letter count", err)
-      );
-  }, []);
-
-  useEffect(() => {
-    const fetchTemperature = async () => {
-      try {
-        const response = await fetch("http://localhost:3000/temperature");
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        const data = await response.json();
-        setTemperature(data.temperature || 0);
-      } catch (error) {
-        console.error("Error fetching temperature:", error);
-      }
-    };
-
-    fetchTemperature();
-  }, []);
-
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
       <LetterCountDisplay count={letterCount} />
       <TemperatureDisplay temperature={temperature} />
-      <MailButton onClick={handleMailButtonClick} />
+      <HumidityDisplay humidity={humidity} />
+      {/*<MailButton onClick={handleMailButtonClick} />*/}
       <Canvas
         shadows
         camera={{ position: [0, 0, 3], fov: 50 }}
