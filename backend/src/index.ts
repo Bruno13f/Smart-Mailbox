@@ -217,6 +217,8 @@ async function handleRestRequest(req: Request): Promise<Response> {
         createContentInstance(CONTAINER_HUMIDITY, humidity, butlerConfig),
       ]);
 
+      notifyAllClients("new-humidity", { humidity });
+
       return json({ message: "Humidity saved", acme: contentResults }, 201);
     } catch (err: any) {
       return json(
