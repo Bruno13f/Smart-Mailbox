@@ -261,6 +261,28 @@ async function handleRestRequest(req: Request): Promise<Response> {
     }
   }
 
+  if (method === "POST" && pathname === "/reminderMail") {
+    try {
+      const body = await parseJSONBody(req);
+      if (typeof body.message !== "string")
+        throw new Error("Invalid message");
+
+      const message = body.message;
+
+      let contentResults = await Promise.all([
+        createContentInstance(CONTAINER_MAILBOX, message, defaultConfig),
+        createContentInstance(CONTAINER_MAILBOX, message, butlerConfig),
+      ]);
+
+      return json({ message: "Message saved", acme: contentResults }, 201);
+    } catch (err: any) {
+      return json(
+        { error: err.message || "Failed to handle /humidity request" },
+        400
+      );
+    }
+  }
+
   return new Response("Página não encontrada", {
     status: 404,
     headers: { "Access-Control-Allow-Origin": "*" },
