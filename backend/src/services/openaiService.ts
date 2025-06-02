@@ -6,32 +6,59 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const promptFilePath = path.resolve(
-  __dirname,
-  "../prompts/promptGenerateNotification.txt"
-);
-
 export interface NotificationContent {
   title: string;
   body: string;
 }
 
-async function generateMessageOpenAI(): Promise<string | null> {
-  const prompt = fs.readFileSync(promptFilePath, "utf-8");
+export enum NotificationType {
+  MAIL = "mail",
+  NO_MAIL = "no-mail",
+  STILL_MAIL = "still-mail",
+}
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [{ role: "user", content: prompt }],
-  });
+// Map of prompt types to their corresponding files
+const promptFiles = {
+  [NotificationType.MAIL]: "promptGenerateMailNotification.txt",
+  [NotificationType.NO_MAIL]: "promptGenerateMailboxEmptyNotification.txt",
+  [NotificationType.STILL_MAIL]: "promptGenerateMailReminderNotification.txt",
+};
 
-  return completion.choices[0]!.message.content;
+async function generateMessageOpenAI(
+  promptType: NotificationType = NotificationType.MAIL
+): Promise<string | null> {
+  const promptFilePath = path.resolve(
+    __dirname,
+    "../prompts/",
+    promptFiles[promptType]
+  );
+
+  try {
+    const prompt = fs.readFileSync(promptFilePath, "utf-8");
+
+    if (!prompt) {
+      console.error(`Failed to read prompt file for ${promptType}`);
+      return null;
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    return completion.choices[0]?.message.content || null;
+  } catch (error) {
+    console.error(`Error reading prompt file for ${promptType}:`, error);
+    return null;
+  }
 }
 
 export async function getNotificationOpenAI(
-  maxRetries = 5
+  maxRetries = 5,
+  promptType: NotificationType = NotificationType.MAIL
 ): Promise<NotificationContent | null> {
   for (let tries = 0; tries < maxRetries; tries++) {
-    const message = await generateMessageOpenAI();
+    const message = await generateMessageOpenAI(promptType);
     const parsedContent = parseJsonFromMessage(message);
 
     if (!parsedContent) {
