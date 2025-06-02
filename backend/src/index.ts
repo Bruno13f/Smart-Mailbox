@@ -26,11 +26,11 @@ let db: Awaited<ReturnType<typeof connectToDB>>;
 await (async () => {
   // even if no connection to db is made (we are at school, port is disabled),
   // we can still run the api to serve the acme requests to onem2m
-  // try {
-  //   db = await connectToDB();
-  // } catch (error) {
-  //   console.log("Erro ao conectar ao MongoDB");
-  // }
+  try {
+    db = await connectToDB();
+  } catch (error) {
+    console.log("Erro ao conectar ao MongoDB");
+  }
 })();
 
 const websocketHandlers = {
@@ -110,18 +110,18 @@ async function handleRestRequest(req: Request): Promise<Response> {
           ]);
           containerResultsSmartMailbox.forEach(send);
 
-          send("\nCreating content instances...");
-          const timestamp = new Date().toISOString();
-          const contentResultsSmartMailbox = await Promise.all([
-            createContentInstance(
-              CONTAINER_MAILBOX,
-              `Novo pacote entregue às ${timestamp}`,
-              defaultConfig
-            ),
-            createContentInstance(CONTAINER_TEMPERATURE, "22.3", defaultConfig),
-            createContentInstance(CONTAINER_HUMIDITY, "54", defaultConfig),
-          ]);
-          contentResultsSmartMailbox.forEach(send);
+          // send("\nCreating content instances...");
+          // const timestamp = new Date().toISOString();
+          // const contentResultsSmartMailbox = await Promise.all([
+          //   createContentInstance(
+          //     CONTAINER_MAILBOX,
+          //     `Novo pacote entregue às ${timestamp}`,
+          //     defaultConfig
+          //   ),
+          //   createContentInstance(CONTAINER_TEMPERATURE, "22.3", defaultConfig),
+          //   createContentInstance(CONTAINER_HUMIDITY, "54", defaultConfig),
+          // ]);
+          // contentResultsSmartMailbox.forEach(send);
           send("\nOneM2M SmartMailbox setup completed.");
 
           send("\n=========ACME BUTLER=========\n");
@@ -148,17 +148,17 @@ async function handleRestRequest(req: Request): Promise<Response> {
           ]);
           containerResultsButler.forEach(send);
 
-          send("\nCreating content instances...");
-          const contentResultsButler = await Promise.all([
-            createContentInstance(
-              CONTAINER_MAILBOX,
-              "Tens novo correio",
-              butlerConfig
-            ),
-            createContentInstance(CONTAINER_TEMPERATURE, "22.3", butlerConfig),
-            createContentInstance(CONTAINER_HUMIDITY, "54", butlerConfig),
-          ]);
-          contentResultsButler.forEach(send);
+          // send("\nCreating content instances...");
+          // const contentResultsButler = await Promise.all([
+          //   createContentInstance(
+          //     CONTAINER_MAILBOX,
+          //     "Tens novo correio",
+          //     butlerConfig
+          //   ),
+          //   createContentInstance(CONTAINER_TEMPERATURE, "22.3", butlerConfig),
+          //   createContentInstance(CONTAINER_HUMIDITY, "54", butlerConfig),
+          // ]);
+          // contentResultsButler.forEach(send);
           send("\nOneM2M Butler setup completed.");
         } catch (err: any) {
           send("Error: " + (err.message || "Failed to setup OneM2M"));
@@ -191,18 +191,16 @@ async function handleRestRequest(req: Request): Promise<Response> {
       const body = await parseJSONBody(req);
       if (body.mail !== true) return json({ message: "No mail received" });
 
-      const timestamp = new Date().toISOString();
-
       let openAiMessage: NotificationContent | null =
         await getNotificationOpenAI(5);
       if (!openAiMessage) {
         openAiMessage = {
-          title: "Novo pacote",
-          body: `Novo pacote entregue às ${timestamp}`,
+          title: "Olá tens novo correio!",
+          body: `Novo correio foi entregue.`,
         };
       }
 
-      const message = openAiMessage.title + " - " + openAiMessage.body;
+      const message = openAiMessage.title + openAiMessage.body;
 
       let contentResults = await Promise.all([
         createContentInstance(CONTAINER_MAILBOX, message, defaultConfig),
