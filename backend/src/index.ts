@@ -277,7 +277,7 @@ async function handleRestRequest(req: Request): Promise<Response> {
       return json({ message: "Message saved", acme: contentResults }, 201);
     } catch (err: any) {
       return json(
-        { error: err.message || "Failed to handle /humidity request" },
+        { error: err.message || "Failed to handle /reminderMail request" },
         400
       );
     }
