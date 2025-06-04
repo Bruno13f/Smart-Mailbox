@@ -1,0 +1,17 @@
+meta {
+  name: SetupOneM2M
+  type: http
+  seq: 7
+}
+
+post {
+  url: http://localhost:3000/mail
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "mail": true
+  }
+}

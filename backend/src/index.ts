@@ -7,10 +7,9 @@ import {
   checkAEExists,
   defaultConfig,
   butlerConfig,
+  setupOneM2MApp,
 } from "./acmeClient";
-import {
-  parseJSONBody,
-} from "./utils";
+import { parseJSONBody } from "./utils";
 import { addClient, removeClient, notifyAllClients } from "./ws-clients";
 import {
   getNotificationOpenAI,
@@ -29,9 +28,9 @@ const websocketHandlers = {
   close: removeClient,
 };
 
-const CONTAINER_MAILBOX = "mailbox";
-const CONTAINER_TEMPERATURE = "temperature";
-const CONTAINER_HUMIDITY = "humidity";
+export const CONTAINER_MAILBOX = "mailbox";
+export const CONTAINER_TEMPERATURE = "temperature";
+export const CONTAINER_HUMIDITY = "humidity";
 
 async function generateAndSaveMailNotification(
   promptType: NotificationType,
@@ -81,55 +80,22 @@ async function handleRestRequest(req: Request): Promise<Response> {
         };
 
         try {
-          send("=========ACME SMART MAILBOX=========\n");
-          send("Creating ACP...");
-          send(await createACP(defaultConfig));
-
-          send("Creating AE...");
-          send(await createAE(defaultConfig));
-
-          const ae_exists_smartmailbox = await checkAEExists(defaultConfig);
-          if (!ae_exists_smartmailbox) {
-            send("AE does not exist. Please create the AE first.");
+          // Set up Smart Mailbox
+          const smartMailboxSuccess = await setupOneM2MApp(
+            defaultConfig,
+            "SMART MAILBOX",
+            send
+          );
+          if (!smartMailboxSuccess) {
             controller.close();
             return;
           }
-          send("\nAE exists.\n");
 
-          send("Creating containers...");
-          const containerResultsSmartMailbox = await Promise.all([
-            createContainer(CONTAINER_MAILBOX, defaultConfig),
-            createContainer(CONTAINER_TEMPERATURE, defaultConfig),
-            createContainer(CONTAINER_HUMIDITY, defaultConfig),
-          ]);
-          containerResultsSmartMailbox.forEach(send);
+          // Add delay between setups to prevent server timeout issues
+          await new Promise((resolve) => setTimeout(resolve, 100));
 
-          send("\nOneM2M SmartMailbox setup completed.");
-          send("\n=========ACME BUTLER=========\n");
-
-          send("Creating ACP...");
-          send(await createACP(butlerConfig));
-
-          send("Creating AE...");
-          send(await createAE(butlerConfig));
-
-          const ae_exists_butler = await checkAEExists(butlerConfig);
-          if (!ae_exists_butler) {
-            send("AE does not exist. Please create the AE first.");
-            controller.close();
-            return;
-          }
-          send("\nAE exists.\n");
-
-          send("Creating containers...");
-          const containerResultsButler = await Promise.all([
-            createContainer(CONTAINER_MAILBOX, butlerConfig),
-            createContainer(CONTAINER_TEMPERATURE, butlerConfig),
-            createContainer(CONTAINER_HUMIDITY, butlerConfig),
-          ]);
-          containerResultsButler.forEach(send);
-
-          send("\nOneM2M Butler setup completed.");
+          // Set up Butler
+          await setupOneM2MApp(butlerConfig, "BUTLER", send);
         } catch (err: any) {
           send("Error: " + (err.message || "Failed to setup OneM2M"));
         }

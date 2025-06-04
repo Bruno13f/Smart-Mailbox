@@ -5,6 +5,11 @@ import { generateHeader } from "./requests/header";
 import { createContainerBody } from "./requests/createContainer";
 import { createCIN } from "./requests/createCIN";
 import { fetchWithRetry } from "./utils";
+import {
+  CONTAINER_HUMIDITY,
+  CONTAINER_MAILBOX,
+  CONTAINER_TEMPERATURE,
+} from ".";
 
 config();
 
@@ -41,7 +46,7 @@ export const defaultConfig: AcmeConfig = {
   cse_name: requireEnv("CSE_NAME"),
   originator: requireEnv("ORIGINATOR"),
   acp_name: "acpSmartMailbox",
-  ae_name: "CSmartMailbox"
+  ae_name: "CSmartMailbox",
 };
 
 export const butlerConfig: AcmeConfig = {
@@ -50,8 +55,42 @@ export const butlerConfig: AcmeConfig = {
   cse_name: requireEnv("BUTLER_CSE_NAME"),
   originator: requireEnv("BUTLER_ORIGINATOR"),
   acp_name: "acpSmartMailboxButler",
-  ae_name: "CSmartMailboxButler"
+  ae_name: "CSmartMailboxButler",
 };
+
+
+// Helper function to set up a OneM2M application
+export async function setupOneM2MApp(
+  config: any,
+  appName: string,
+  send: (msg: string) => void
+): Promise<boolean> {
+  send(`\n=========ACME ${appName}=========\n`);
+
+  send("Creating ACP...");
+  send(await createACP(config));
+
+  send("Creating AE...");
+  send(await createAE(config));
+
+  const ae_exists = await checkAEExists(config);
+  if (!ae_exists) {
+    send(`AE does not exist. Please create the AE first.`);
+    return false;
+  }
+  send("\nAE exists.\n");
+
+  send("Creating containers...");
+  const containerResults = await Promise.all([
+    createContainer(CONTAINER_MAILBOX, config),
+    createContainer(CONTAINER_TEMPERATURE, config),
+    createContainer(CONTAINER_HUMIDITY, config),
+  ]);
+  containerResults.forEach(send);
+
+  send(`\nOneM2M ${appName} setup completed.`);
+  return true;
+}
 
 export async function createACP(config: AcmeConfig) {
   const req_id = `reqSmartMailbox_${Math.floor(100 + Math.random() * 900)}`;
@@ -59,17 +98,20 @@ export async function createACP(config: AcmeConfig) {
   const header = generateHeader(config.originator, req_id, CREATE_ACP);
 
   try {
-    const response = await fetch(`${config.acme_url}/~/${config.cse_id}/${config.cse_name}`, {
-      method: "POST",
-      headers: header,
-      body: JSON.stringify(requestBody),
-    });
+    const response = await fetch(
+      `${config.acme_url}/~/${config.cse_id}/${config.cse_name}`,
+      {
+        method: "POST",
+        headers: header,
+        body: JSON.stringify(requestBody),
+      }
+    );
 
     if (response.ok) {
       console.log("\nACP created Successfully");
       return "ACP created successfully\n";
     } else if (response.status == 409) {
-        console.log("\nACP already exists");
+      console.log("\nACP already exists");
       return "ACP already exists\n";
     } else {
       const resText = await response.text();
@@ -84,17 +126,24 @@ export async function createACP(config: AcmeConfig) {
 
 export async function createAE(config: AcmeConfig) {
   // ao obter detalhes ACP verifica se esta existe
-  const acp_ri = await getACPDetails(config); 
+  const acp_ri = await getACPDetails(config);
   const req_id = `reqSmartMailbox_${Math.floor(100 + Math.random() * 900)}`;
-  const requestBody = createAEBody(acp_ri, config.ae_name, config.acme_url + "/");
+  const requestBody = createAEBody(
+    acp_ri,
+    config.ae_name,
+    config.acme_url + "/"
+  );
   const header = generateHeader(config.ae_name, req_id, CREATE_AE);
 
   try {
-    const response = await fetch(`${config.acme_url}/~/${config.cse_id}/${config.cse_name}`, {
-      method: "POST",
-      headers: header,
-      body: JSON.stringify(requestBody),
-    });
+    const response = await fetch(
+      `${config.acme_url}/~/${config.cse_id}/${config.cse_name}`,
+      {
+        method: "POST",
+        headers: header,
+        body: JSON.stringify(requestBody),
+      }
+    );
 
     if (response.ok) {
       console.log("\nAE created Successfully\n");
@@ -161,7 +210,6 @@ export async function getACPDetails(config: AcmeConfig) {
 }
 
 export async function createContainer(cntName: string, config: AcmeConfig) {
-
   const req_id = `reqSmartMailbox_${Math.floor(100 + Math.random() * 900)}`;
   const requestBody = createContainerBody(cntName);
   const header = generateHeader(config.ae_name, req_id, CREATE_CNT);
