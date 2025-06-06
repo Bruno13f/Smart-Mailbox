@@ -95,6 +95,9 @@ async function handleRestRequest(req: Request): Promise<Response> {
         let butlerFound = false;
         for (let attempt = 1; attempt <= 3; attempt++) {
           const butlerFound = await findVirtualButlerACME();
+          if (butlerFound) {
+            break;
+          }
           console.warn(`findVirtualButlerACME attempt ${attempt} failed, retrying...`);
         }
         if (!butlerFound) {
