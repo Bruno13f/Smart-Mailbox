@@ -72,6 +72,32 @@ async function handleRestRequest(req: Request): Promise<Response> {
     });
 
   if (method === "POST" && pathname === "/setupOneM2M") {
+    const isEsp32 = req.headers.get("x-client-type") === "esp32";
+    if (isEsp32) {
+      // Run setup and collect logs in an array
+      const logs: string[] = [];
+      const send = (msg: string) => {
+        console.log(msg);
+        logs.push(msg);
+      };
+      try {
+        const smartMailboxSuccess = await setupOneM2MApp(
+          defaultConfig,
+          "SMART MAILBOX",
+          send
+        );
+        if (!smartMailboxSuccess) {
+          return json({ logs, error: "Smart Mailbox setup failed" }, 500);
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        await setupOneM2MApp(butlerConfig, "BUTLER", send);
+        return json({ logs, success: true });
+      } catch (err: any) {
+        logs.push("Error: " + (err.message || "Failed to setup OneM2M"));
+        return json({ logs, error: err.message }, 500);
+      }
+    }
+    
     const stream = new ReadableStream({
       async start(controller) {
         const send = (msg: string) => {

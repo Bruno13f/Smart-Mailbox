@@ -29,9 +29,9 @@
 const int LOADCELL_DOUT = 33;
 const int LOADCELL_SCK = 32;*/
 
-const char* base_url = "";
-const char* ssid = "";
-const char* password = "";
+const char* base_url = "http://192.168.1.37:3000";
+const char* ssid = "hackerdoipl";
+const char* password = "12345678";
 
 float weight_of_object_for_calibration;
 bool isCalibrated = false;
@@ -114,30 +114,26 @@ void sendOneM2MSetup() {
   String url = String(base_url) + "/setupOneM2M";
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
-
+  http.addHeader("X-Client-Type", "esp32");
+  
   // Set timeout for the HTTP connection (not streaming)
   http.setTimeout(20000);  // Timeout for establishing the connection
 
   Serial.println("Sending setupOneM2M request...");
 
   int httpResponseCode = http.POST("{}");
-
-  if (httpResponseCode > 0) {
-    // Handle the streaming response
-    if (httpResponseCode == HTTP_CODE_OK) {
-      // Check if the server has data available in the response stream
-      NetworkClient responseStream = http.getStream();
-      while (responseStream.available()) {
-        String line = responseStream.readStringUntil('\n');
-        Serial.println(line);  // Print the streamed data
-      }
-    }
+  if (httpResponseCode == HTTP_CODE_OK) {
     Serial.println("✅ setupOneM2M completed successfully.");
   } else {
     Serial.println("❌ setupOneM2M failed. The program will stop.");
     ESP.restart();
   }
-
+  if (httpResponseCode == HTTP_CODE_OK) {
+    Serial.println("✅ setupOneM2M completed successfully.");
+  } else {
+    Serial.println("❌ setupOneM2M failed. The program will stop.");
+    ESP.restart();
+  }
   http.end();
 }
 
