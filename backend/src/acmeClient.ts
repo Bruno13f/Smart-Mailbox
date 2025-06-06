@@ -82,11 +82,14 @@ export async function findVirtualButlerACME() {
         const found = await findAE(baseURL);
         if (found) {
           butlerConfig.acme_url = baseURL;
+          return true;
         }
       } catch (err) {
         // Ignore errors for unreachable IPs
       }
     }
+
+    return false;
 
   } catch (err) {
     console.error("Error finding Virtual Butler ACME IP:", err);
