@@ -18,7 +18,7 @@
 // margin of error for the temp and hum sensor - 2
 #define THRESHOLD_TEMP_HUM 1
 // time for the notification
-#define CHECK_INTERVAL 30000
+#define CHECK_INTERVAL 10000
 
 #define NEW_MAIL 0
 #define NEW_TEMP 1
@@ -30,9 +30,9 @@
 const int LOADCELL_DOUT = 33;
 const int LOADCELL_SCK = 32;*/
 
-const char* base_url = "http://192.168.1.37:3000";
-const char* ssid = "hackerdoipl";
-const char* password = "12345678";
+const char* base_url = "http://192.168.1.91:3000";
+const char* ssid = "";
+const char* password = "";
 
 float weight_of_object_for_calibration;
 bool isCalibrated = false;
@@ -94,14 +94,14 @@ bool sendAPIRequest(int type, float value) {
       return false;
   }
 
+  serializeJson(doc, payload);
+
   http.begin(url);
   http.addHeader("Content-Type", "application/json");
   int httpRespondCode = http.POST(payload);
 
   Serial.print("HTTP Response code: ");
   Serial.println(httpRespondCode);
-  Serial.print("Payload sent: ");
-  Serial.println(payload);
 
   http.end();
 
@@ -300,6 +300,8 @@ void loop() {
 
     if (isCalibrated){
 
+      delay(2000);
+
       Serial.print("Weight: ");
       delay(500);
       int currentWeight = LOADCELL_HX711.get_units(10);
@@ -314,7 +316,7 @@ void loop() {
 
       if (currentWeight < lastWeight && currentWeight < THRESHOLD_WEIGHT) {
         Serial.println("✅ Mailbox checked! ");
-        //SendAPIRequest(EMPTY_MAILBOX,0);
+        sendAPIRequest(EMPTY_MAILBOX,0);
         if (isTimerRunning){
           isTimerRunning = false;
         }

@@ -30,6 +30,7 @@ const websocketHandlers = {
 };
 
 export const CONTAINER_MAILBOX = "mailbox";
+export const CONTAINER_BUTLER = "TTS";
 export const CONTAINER_TEMPERATURE = "temperature";
 export const CONTAINER_HUMIDITY = "humidity";
 
@@ -43,8 +44,8 @@ async function generateAndSaveMailNotification(
     : fallbackMessage;
 
   const contentResults = await Promise.all([
-    createContentInstance(CONTAINER_MAILBOX, "Act as a Announcer, say what I tell you and nothing else, '" + message + "'", defaultConfig),
-    createContentInstance(CONTAINER_MAILBOX, "Act as a Announcer, say what I tell you and nothing else, '" + message + "'", butlerConfig),
+    createContentInstance(CONTAINER_MAILBOX, message, defaultConfig),
+    createContentInstance(CONTAINER_BUTLER, "Act as a Announcer, say what I tell you and nothing else, '" + message + "'", butlerConfig),
   ]);
 
   return { message, contentResults };
@@ -92,9 +93,10 @@ async function handleRestRequest(req: Request): Promise<Response> {
         }
         await new Promise((resolve) => setTimeout(resolve, 100));
         
-        let butlerFound = false;
+        /*let butlerFound = false;
         for (let attempt = 1; attempt <= 3; attempt++) {
-          const butlerFound = await findVirtualButlerACME();
+          // Do NOT redeclare with const here!
+          butlerFound = (await findVirtualButlerACME()) ?? false;
           if (butlerFound) {
             break;
           }
@@ -104,7 +106,8 @@ async function handleRestRequest(req: Request): Promise<Response> {
           throw new Error("Could not find Virtual Butler ACME after 3 attempts");
         }
         
-        await setupOneM2MApp(butlerConfig, "BUTLER", send);
+        logs.push("Virtual Butler found.");*/
+
         return json({ logs, success: true });
       } catch (err: any) {
         logs.push("Error: " + (err.message || "Failed to setup OneM2M"));
@@ -132,9 +135,8 @@ async function handleRestRequest(req: Request): Promise<Response> {
 
           let butlerFound = false;
           for (let attempt = 1; attempt <= 3; attempt++) {
-            const result = await findVirtualButlerACME();
-            if (butlerConfig.acme_url) {
-              butlerFound = true;
+            butlerFound = (await findVirtualButlerACME()) ?? false;
+            if (butlerFound) {
               break;
             }
             console.warn(`findVirtualButlerACME attempt ${attempt} failed, retrying...`);
@@ -143,11 +145,8 @@ async function handleRestRequest(req: Request): Promise<Response> {
             throw new Error("Could not find Virtual Butler ACME after 3 attempts");
           }
 
-          // Add delay between setups to prevent server timeout issues
-          await new Promise((resolve) => setTimeout(resolve, 100));
+          send("Virtual Butler found.");
 
-          // Set up Butler
-          await setupOneM2MApp(butlerConfig, "BUTLER", send);
         } catch (err: any) {
           send("Error: " + (err.message || "Failed to setup OneM2M"));
         }
@@ -204,7 +203,6 @@ async function handleRestRequest(req: Request): Promise<Response> {
           temperature,
           defaultConfig
         ),
-        createContentInstance(CONTAINER_TEMPERATURE, temperature, butlerConfig),
       ]);
 
       notifyAllClients("new-temperature", { temperature });
@@ -228,7 +226,6 @@ async function handleRestRequest(req: Request): Promise<Response> {
 
       let contentResults = await Promise.all([
         createContentInstance(CONTAINER_HUMIDITY, humidity, defaultConfig),
-        createContentInstance(CONTAINER_HUMIDITY, humidity, butlerConfig),
       ]);
 
       notifyAllClients("new-humidity", { humidity });

@@ -55,8 +55,8 @@ export const butlerConfig: AcmeConfig = {
   cse_id: requireEnv("BUTLER_CSE_ID"),
   cse_name: requireEnv("BUTLER_CSE_NAME"),
   originator: requireEnv("BUTLER_ORIGINATOR"),
-  acp_name: "acpSmartMailboxButler",
-  ae_name: "CSmartMailboxButler",
+  acp_name: "",
+  ae_name: "Butler",
 };
 
 export async function findVirtualButlerACME() {
@@ -76,7 +76,10 @@ export async function findVirtualButlerACME() {
 
     const ips = result.split(";").map(ip => ip.trim()).filter(ip => ip);
 
+    console.log("Found IPs:", ips);
+
     for (const ip of ips) {
+      console.log(`Trying to find AE at ${ip}:8080...`);
       const baseURL = `http://${ip}:8080`;
       try {
         const found = await findAE(baseURL);
@@ -109,7 +112,7 @@ export async function findAE(baseURL: string){
       }
     );
 
-    if (response.ok) {
+    if (response.status === 200) {
       return true; //found
     } else {
       return false; //not found
@@ -309,7 +312,13 @@ export async function createContentInstance(
   config: AcmeConfig
 ) {
   const req_id = `reqContent_${Math.floor(100 + Math.random() * 900)}`;
-  const header = generateHeader(config.ae_name, req_id, CREATE_CIN);
+  let header;
+  if (config.ae_name === "Butler") {
+    header = generateHeader("CAdmin", req_id, CREATE_CIN);
+  }else{
+    header = generateHeader(config.ae_name, req_id, CREATE_CIN);
+  }
+  
   const requestBody = createCIN(content);
 
   try {
@@ -331,7 +340,7 @@ export async function createContentInstance(
       return `ContentInstance created in '${containerName}' with content: ${content}`;
     } else {
       console.error("Error creating ContentInstance:", resText);
-      throw new Error(`Failed to create ContentInstance: ${resText}`);
+      return `Error creating ContentInstance: ${resText}`;
     }
   } catch (error) {
     console.error("Network or other error:", error);
