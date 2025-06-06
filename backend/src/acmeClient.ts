@@ -5,6 +5,7 @@ import { generateHeader } from "./requests/header";
 import { createContainerBody } from "./requests/createContainer";
 import { createCIN } from "./requests/createCIN";
 import { fetchWithRetry } from "./utils";
+import { execSync } from "child_process";
 import {
   CONTAINER_HUMIDITY,
   CONTAINER_MAILBOX,
@@ -50,7 +51,7 @@ export const defaultConfig: AcmeConfig = {
 };
 
 export const butlerConfig: AcmeConfig = {
-  acme_url: requireEnv("BUTLER_ACME_URL"),
+  acme_url: "",
   cse_id: requireEnv("BUTLER_CSE_ID"),
   cse_name: requireEnv("BUTLER_CSE_NAME"),
   originator: requireEnv("BUTLER_ORIGINATOR"),
@@ -58,6 +59,64 @@ export const butlerConfig: AcmeConfig = {
   ae_name: "CSmartMailboxButler",
 };
 
+export async function findVirtualButlerACME() {
+  try {
+    const myip = execSync(
+      `ip route get 1.1.1.1 | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}'`
+    )
+      .toString()
+      .trim();
+
+    const cmd = `
+      nmap -p 8080 --open 192.168.1.0/24 | \
+      awk '/Nmap scan report/{gsub(/[()]/,"",$NF); ip=$NF} /8080\\/tcp open/{print ip}' | \
+      grep -v ${myip} | paste -sd ';' -
+    `;
+    const result = execSync(cmd, { shell: "/bin/bash" }).toString().trim();
+
+    const ips = result.split(";").map(ip => ip.trim()).filter(ip => ip);
+
+    for (const ip of ips) {
+      const baseURL = `http://${ip}:8080`;
+      try {
+        const found = await findAE(baseURL);
+        if (found) {
+          butlerConfig.acme_url = baseURL;
+        }
+      } catch (err) {
+        // Ignore errors for unreachable IPs
+      }
+    }
+
+  } catch (err) {
+    console.error("Error finding Virtual Butler ACME IP:", err);
+  }
+}
+
+export async function findAE(baseURL: string){
+
+  const req_id = `reqSmartMailbox_${Math.floor(100 + Math.random() * 900)}`;
+  const header = generateHeader(butlerConfig.originator!, req_id, 0);
+
+  try {
+    const response = await fetch(
+      `${baseURL}/~/${butlerConfig.cse_id}/${butlerConfig.cse_name}/Butler`,
+      {
+        headers: header,
+      }
+    );
+
+    if (response.ok) {
+      return true; //found
+    } else {
+      return false; //not found
+    }
+  } catch (error) {
+    console.error("Network or other error:", error);
+    throw error;
+  }
+
+}
 
 // Helper function to set up a OneM2M application
 export async function setupOneM2MApp(

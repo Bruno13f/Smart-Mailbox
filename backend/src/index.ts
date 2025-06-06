@@ -8,6 +8,7 @@ import {
   defaultConfig,
   butlerConfig,
   setupOneM2MApp,
+  findVirtualButlerACME,
 } from "./acmeClient";
 import { parseJSONBody } from "./utils";
 import { addClient, removeClient, notifyAllClients } from "./ws-clients";
@@ -90,6 +91,9 @@ async function handleRestRequest(req: Request): Promise<Response> {
           return json({ logs, error: "Smart Mailbox setup failed" }, 500);
         }
         await new Promise((resolve) => setTimeout(resolve, 100));
+        
+        await findVirtualButlerACME()
+        
         await setupOneM2MApp(butlerConfig, "BUTLER", send);
         return json({ logs, success: true });
       } catch (err: any) {
@@ -97,7 +101,6 @@ async function handleRestRequest(req: Request): Promise<Response> {
         return json({ logs, error: err.message }, 500);
       }
     }
-    
     const stream = new ReadableStream({
       async start(controller) {
         const send = (msg: string) => {
@@ -116,6 +119,8 @@ async function handleRestRequest(req: Request): Promise<Response> {
             controller.close();
             return;
           }
+
+          await findVirtualButlerACME()
 
           // Add delay between setups to prevent server timeout issues
           await new Promise((resolve) => setTimeout(resolve, 100));
