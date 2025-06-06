@@ -12,12 +12,13 @@
 #define DHTTYPE DHT11
 #define LOADCELL_DOUT 16
 #define LOADCELL_SCK 4
+#define MOTION_SENSOR 27
 // margin of error for the load cell - 10g
 #define THRESHOLD_WEIGHT 5 
 // margin of error for the temp and hum sensor - 2
 #define THRESHOLD_TEMP_HUM 1
 // time for the notification
-#define CHECK_INTERVAL 10000
+#define CHECK_INTERVAL 30000
 
 #define NEW_MAIL 0
 #define NEW_TEMP 1
@@ -119,15 +120,7 @@ void sendOneM2MSetup() {
   // Set timeout for the HTTP connection (not streaming)
   http.setTimeout(20000);  // Timeout for establishing the connection
 
-  Serial.println("Sending setupOneM2M request...");
-
   int httpResponseCode = http.POST("{}");
-  if (httpResponseCode == HTTP_CODE_OK) {
-    Serial.println("✅ setupOneM2M completed successfully.");
-  } else {
-    Serial.println("❌ setupOneM2M failed. The program will stop.");
-    ESP.restart();
-  }
   if (httpResponseCode == HTTP_CODE_OK) {
     Serial.println("✅ setupOneM2M completed successfully.");
   } else {
@@ -239,7 +232,7 @@ void initWiFi() {
 void setup() {
   Serial.begin(115200);
   pinMode(LED, OUTPUT);
-  //pinMode(MOTION_SENSOR, INPUT);
+  pinMode(MOTION_SENSOR, INPUT);
   LOADCELL_HX711.begin(LOADCELL_DOUT, LOADCELL_SCK);
   preferences.begin("CF", false);
   delay(2000);
@@ -252,21 +245,17 @@ void setup() {
 
 
 void loop() {
-  /*motionVal = digitalRead(MOTION_SENSOR);   
+  motionVal = digitalRead(MOTION_SENSOR);   
   if (motionVal == HIGH) {           
     digitalWrite(LED, HIGH);   
     delay(100);                
     
     if (state == LOW) {
-      Serial.println("Motion detected!"); 
+      Serial.println("Motion detected! New mail!"); 
       state = HIGH;      
     }
     
-    if (sendNewMail() == 0){
-      Serial.println("Error sending mail");
-    } else {
-      Serial.println("Mail sent successfully");
-    }
+    sendAPIRequest(NEW_MAIL,0);
 
   }
   else {
@@ -278,66 +267,70 @@ void loop() {
       state = LOW;    
     }
 
-  }*/
+    float humidity = dht.readHumidity();
+    float temp = dht.readTemperature();
 
-  float humidity = dht.readHumidity();
-  float temp = dht.readTemperature();
-
-  // Check if any reads failed and exit early (to try again).
-  if (isnan(humidity) || isnan(temp)) {
-    Serial.println(F("Failed to read from DHT sensor!"));
-    return;
-  }
-
-  Serial.print("Temperature: ");
-  Serial.print(temp);
-  Serial.println(" °C");
-
-  // Check for significant temperature change
-  if (abs(temp - lastTemp) >= THRESHOLD_TEMP_HUM) {
-    Serial.println("🌡️ Creating content instance due to temperature change...");
-    lastTemp = temp;
-  }
-
-  Serial.print("Humidity: ");
-  Serial.print(humidity);
-  Serial.println(" %");
-
-  // Check for significant humidity change
-  if (abs(humidity - lastHumidity) >= THRESHOLD_TEMP_HUM) {
-    Serial.println("💧 Creating content instance due to humidity change...");
-    lastHumidity = humidity;
-  }
-
-  if (isCalibrated){
-
-    Serial.print("Weight: ");
-    delay(500);
-    int currentWeight = LOADCELL_HX711.get_units(10);
-    Serial.print(currentWeight);
-    Serial.println(" g");
-
-    if (currentWeight > lastWeight + THRESHOLD_WEIGHT) {
-      Serial.println("📬 New object detected in mailbox... Starting timer...");
-      timerStartMillis = millis();
-      isTimerRunning = true;
+    // Check if any reads failed and exit early (to try again).
+    if (isnan(humidity) || isnan(temp)) {
+      Serial.println(F("Failed to read from DHT sensor!"));
+      return;
     }
 
-    if (currentWeight < lastWeight && currentWeight < THRESHOLD_WEIGHT) {
-      Serial.println("✅ Mailbox checked! ");
-      if (isTimerRunning){
-        isTimerRunning = false;
+    Serial.print("Temperature: ");
+    Serial.print(temp);
+    Serial.println(" °C");
+
+    // Check for significant temperature change
+    if (abs(temp - lastTemp) >= THRESHOLD_TEMP_HUM) {
+      Serial.println("🌡️ Creating content instance due to temperature change...");
+      sendAPIRequest(NEW_TEMP,temp);
+      lastTemp = temp;
+    }
+
+    Serial.print("Humidity: ");
+    Serial.print(humidity);
+    Serial.println(" %");
+
+    // Check for significant humidity change
+    if (abs(humidity - lastHumidity) >= THRESHOLD_TEMP_HUM) {
+      Serial.println("💧 Creating content instance due to humidity change...");
+      sendAPIRequest(NEW_HUM,humidity);
+      lastHumidity = humidity;
+    }
+
+    if (isCalibrated){
+
+      Serial.print("Weight: ");
+      delay(500);
+      int currentWeight = LOADCELL_HX711.get_units(10);
+      Serial.print(currentWeight);
+      Serial.println(" g");
+
+      if (currentWeight > lastWeight + THRESHOLD_WEIGHT) {
+        Serial.println("📬 New object detected in mailbox... Starting timer...");
+        timerStartMillis = millis();
+        isTimerRunning = true;
       }
+
+      if (currentWeight < lastWeight && currentWeight < THRESHOLD_WEIGHT) {
+        Serial.println("✅ Mailbox checked! ");
+        //SendAPIRequest(EMPTY_MAILBOX,0);
+        if (isTimerRunning){
+          isTimerRunning = false;
+        }
+      }
+
+      if (isTimerRunning && millis() - timerStartMillis >= CHECK_INTERVAL) {
+        Serial.println("⏳ Mailbox not checked yet! Reseting timer...");
+        sendAPIRequest(NEW_REMINDER,0);
+        timerStartMillis = millis();  // Reset timer for next check
+      }
+
+      lastWeight = currentWeight;
+
+      delay(1000);
+
     }
-
-    if (isTimerRunning && millis() - timerStartMillis >= CHECK_INTERVAL) {
-      Serial.println("⏳ Mailbox not checked yet! Reseting timer...");
-      timerStartMillis = millis();  // Reset timer for next check
-    }
-
-    lastWeight = currentWeight;
-
-    delay(1000);
 
   }
 

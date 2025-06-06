@@ -43,8 +43,8 @@ async function generateAndSaveMailNotification(
     : fallbackMessage;
 
   const contentResults = await Promise.all([
-    createContentInstance(CONTAINER_MAILBOX, message, defaultConfig),
-    createContentInstance(CONTAINER_MAILBOX, message, butlerConfig),
+    createContentInstance(CONTAINER_MAILBOX, "Act as a Announcer, say what I tell you and nothing else, '" + message + "'", defaultConfig),
+    createContentInstance(CONTAINER_MAILBOX, "Act as a Announcer, say what I tell you and nothing else, '" + message + "'", butlerConfig),
   ]);
 
   return { message, contentResults };
@@ -92,7 +92,18 @@ async function handleRestRequest(req: Request): Promise<Response> {
         }
         await new Promise((resolve) => setTimeout(resolve, 100));
         
-        await findVirtualButlerACME()
+        let butlerFound = false;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          const result = await findVirtualButlerACME();
+          if (butlerConfig.acme_url) {
+            butlerFound = true;
+            break;
+          }
+          console.warn(`findVirtualButlerACME attempt ${attempt} failed, retrying...`);
+        }
+        if (!butlerFound) {
+          throw new Error("Could not find Virtual Butler ACME after 3 attempts");
+        }
         
         await setupOneM2MApp(butlerConfig, "BUTLER", send);
         return json({ logs, success: true });
@@ -120,7 +131,18 @@ async function handleRestRequest(req: Request): Promise<Response> {
             return;
           }
 
-          await findVirtualButlerACME()
+          let butlerFound = false;
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            const result = await findVirtualButlerACME();
+            if (butlerConfig.acme_url) {
+              butlerFound = true;
+              break;
+            }
+            console.warn(`findVirtualButlerACME attempt ${attempt} failed, retrying...`);
+          }
+          if (!butlerFound) {
+            throw new Error("Could not find Virtual Butler ACME after 3 attempts");
+          }
 
           // Add delay between setups to prevent server timeout issues
           await new Promise((resolve) => setTimeout(resolve, 100));
@@ -151,14 +173,14 @@ async function handleRestRequest(req: Request): Promise<Response> {
 
       const { message, contentResults } = await generateAndSaveMailNotification(
         NotificationType.MAIL,
-        "Olá tens novo correio! Novo correio foi entregue."
+        "You've got new mail!"
       );
 
       const newCount = 1;
       notifyAllClients("new-mail", { count: newCount });
 
       return json(
-        { message: "Mail event logged", acme: contentResults, count: newCount },
+        { message: "Mail event logged", acme: contentResults, count: 1 },
         201
       );
     } catch (err: any) {
@@ -232,8 +254,8 @@ async function handleRestRequest(req: Request): Promise<Response> {
         : NotificationType.NO_MAIL;
 
       const fallbackMessage = isMailboxFilled
-        ? "Lembrar que tens correio novo"
-        : "A tua caixa de correio está vazia";
+        ? "Reminder go check your mailbox!"
+        : "Your mailbox is empty!";
 
       const { message, contentResults } = await generateAndSaveMailNotification(
         promptType,
