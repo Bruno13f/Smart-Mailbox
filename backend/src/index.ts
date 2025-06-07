@@ -45,7 +45,13 @@ async function generateAndSaveMailNotification(
 
   const contentResults = await Promise.all([
     createContentInstance(CONTAINER_MAILBOX, message, defaultConfig),
-    createContentInstance(CONTAINER_BUTLER, "Act as a Announcer, say what I tell you and nothing else, '" + message + "'", butlerConfig),
+    createContentInstance(
+      CONTAINER_BUTLER,
+      "Act as a Announcer, say what I tell you and nothing else, '" +
+        message +
+        "'",
+      butlerConfig
+    ),
   ]);
 
   return { message, contentResults };
@@ -92,7 +98,7 @@ async function handleRestRequest(req: Request): Promise<Response> {
           return json({ logs, error: "Smart Mailbox setup failed" }, 500);
         }
         await new Promise((resolve) => setTimeout(resolve, 100));
-        
+
         let butlerFound = false;
         for (let attempt = 1; attempt <= 3; attempt++) {
           // Do NOT redeclare with const here!
@@ -100,14 +106,15 @@ async function handleRestRequest(req: Request): Promise<Response> {
           if (butlerFound) {
             break;
           }
-          console.warn(`findVirtualButlerACME attempt ${attempt} failed, retrying...`);
+          console.warn(
+            `findVirtualButlerACME attempt ${attempt} failed, retrying...`
+          );
         }
         if (!butlerFound) {
           logs.push("Could not find Virtual Butler ACME after 3 attempts");
-        }else{
+        } else {
           logs.push("Virtual Butler found.");
         }
-        
 
         return json({ logs, success: true });
       } catch (err: any) {
@@ -140,7 +147,9 @@ async function handleRestRequest(req: Request): Promise<Response> {
             if (butlerFound) {
               break;
             }
-            console.warn(`findVirtualButlerACME attempt ${attempt} failed, retrying...`);
+            console.warn(
+              `findVirtualButlerACME attempt ${attempt} failed, retrying...`
+            );
           }
           if (!butlerFound) {
             send("Could not find Virtual Butler ACME after 3 attempts");
@@ -148,7 +157,6 @@ async function handleRestRequest(req: Request): Promise<Response> {
           }
 
           send("Virtual Butler found.");
-
         } catch (err: any) {
           send("Error: " + (err.message || "Failed to setup OneM2M"));
         }

@@ -1,10 +1,9 @@
-import React, { Suspense, useState, useEffect, useCallback } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Environment } from "@react-three/drei";
 import PortugueseMailbox from "./components/PortugueseMailbox";
 import MailLetter from "./components/MailLetter";
 import LetterCountDisplay from "./components/LetterCountDisplay";
-import MailButton from "./components/MailButton";
 import TemperatureDisplay from "./components/TemperatureDisplay";
 import HumidityDisplay from "./components/HumidityDisplay";
 import LedLightSensor from "./components/LedLightSensor";
@@ -20,7 +19,6 @@ export default function App() {
 
   // Track a list of letters, each with a unique id and animation state
   const [letters, setLetters] = useState([{ id: 0, animating: false }]);
-  const [nextId, setNextId] = useState(1);
 
   // Compute if any letter is animating
   const anyAnimating = letters.some((l) => l.animating);
@@ -30,22 +28,6 @@ export default function App() {
     setFlapOpen(anyAnimating);
   }, [anyAnimating]);
 
-  // When the button is clicked, start animating the first idle letter and add a new one
-  const handleMailButtonClick = useCallback(() => {
-    setLetters((prev) => {
-      // Find the first idle letter
-      const idx = prev.findIndex((l) => !l.animating);
-      if (idx === -1) return prev; // Shouldn't happen
-      // Start animating it
-      const updated = prev.map((l, i) =>
-        i === idx ? { ...l, animating: true } : l
-      );
-      // Add a new idle letter
-      return [...updated, { id: nextId, animating: false }];
-    });
-    setNextId((id) => id + 1);
-  }, [nextId]);
-
   // When a letter finishes animating, remove it and increment the count
   const handleLetterAtSlot = (id) => {
     setLetters((prev) => prev.filter((l) => l.id !== id));
@@ -54,7 +36,7 @@ export default function App() {
 
   // Only create the WebSocket once on mount
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:3000/ws");
+    const ws = new WebSocket("ws://192.168.1.37:3000/ws");
     ws.onopen = () => {
       console.log("WebSocket connected");
     };
@@ -79,7 +61,6 @@ export default function App() {
               },
             ];
           });
-          setNextId((id) => id + 1);
         }
 
         if (
