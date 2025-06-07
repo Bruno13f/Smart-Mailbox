@@ -93,7 +93,7 @@ async function handleRestRequest(req: Request): Promise<Response> {
         }
         await new Promise((resolve) => setTimeout(resolve, 100));
         
-        /*let butlerFound = false;
+        let butlerFound = false;
         for (let attempt = 1; attempt <= 3; attempt++) {
           // Do NOT redeclare with const here!
           butlerFound = (await findVirtualButlerACME()) ?? false;
@@ -106,7 +106,7 @@ async function handleRestRequest(req: Request): Promise<Response> {
           throw new Error("Could not find Virtual Butler ACME after 3 attempts");
         }
         
-        logs.push("Virtual Butler found.");*/
+        logs.push("Virtual Butler found.");
 
         return json({ logs, success: true });
       } catch (err: any) {
