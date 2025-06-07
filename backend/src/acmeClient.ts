@@ -318,6 +318,11 @@ export async function createContentInstance(
   }else{
     header = generateHeader(config.ae_name, req_id, CREATE_CIN);
   }
+
+  if (butlerConfig.acme_url == ""){
+    console.error("Error creating ContentInstance:");
+    return 'Error creating ContentInstance';
+  }
   
   const requestBody = createCIN(content);
 
