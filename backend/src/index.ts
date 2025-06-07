@@ -103,10 +103,11 @@ async function handleRestRequest(req: Request): Promise<Response> {
           console.warn(`findVirtualButlerACME attempt ${attempt} failed, retrying...`);
         }
         if (!butlerFound) {
-          throw new Error("Could not find Virtual Butler ACME after 3 attempts");
+          logs.push("Could not find Virtual Butler ACME after 3 attempts");
+        }else{
+          logs.push("Virtual Butler found.");
         }
         
-        logs.push("Virtual Butler found.");
 
         return json({ logs, success: true });
       } catch (err: any) {
@@ -142,7 +143,8 @@ async function handleRestRequest(req: Request): Promise<Response> {
             console.warn(`findVirtualButlerACME attempt ${attempt} failed, retrying...`);
           }
           if (!butlerFound) {
-            throw new Error("Could not find Virtual Butler ACME after 3 attempts");
+            send("Could not find Virtual Butler ACME after 3 attempts");
+            return;
           }
 
           send("Virtual Butler found.");
